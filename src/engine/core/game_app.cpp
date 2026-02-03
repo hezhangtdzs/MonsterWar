@@ -14,7 +14,6 @@
 #include "../component/sprite_component.h"
 #include "context.h"
 #include "../scene/scene_manager.h"
-#include "../physics/physics_engine.h"
 #include "../audio/audio_player.h"
 #include "../audio/audio_locator.h"
 #include "../audio/log_audio_player.h"
@@ -82,7 +81,6 @@ bool engine::core::GameApp::init()
 		initTextRenderer()&&
 		initCamera()&&
 		initGameState()&&
-		initPhysicsEngine() &&
 		initContext()&&
 		initSceneManager()) 
 	{
@@ -338,7 +336,6 @@ bool engine::core::GameApp::initContext()
 			*camera_,
 			*resource_manager_,
 			*input_manager_,
-			*physics_engine_,
 			*game_state_);
 	}
 	catch (const std::exception& e) {
@@ -395,25 +392,6 @@ bool engine::core::GameApp::initSceneManager()
 	catch (const std::exception& e) {
 		spdlog::error("初始化场景管理器失败: {}", e.what());
 		return false;
-	}
-	return true;
-}
-
-/**
- * @brief 初始化物理引擎。
- * @return 初始化成功返回 true，否则返回 false。
- */
-bool engine::core::GameApp::initPhysicsEngine()
-{
-	try
-	{
-		physics_engine_ = std::make_unique<engine::physics::PhysicsEngine>();
-	}
-	catch (const std::exception&)
-	{
-		spdlog::error("初始化物理引擎失败。");
-		return false;
-	
 	}
 	return true;
 }

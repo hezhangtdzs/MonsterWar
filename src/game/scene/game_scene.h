@@ -10,7 +10,7 @@ namespace game::scene {
      * 
      * 该类作为所有具体游戏场景（如标题场景、关卡场景等）的基类，提供了游戏特定的初始化和管理功能。
      */
-    class GameScene : public engine::scene::Scene {
+    class GameScene final: public engine::scene::Scene {
     public:
         /**
          * @brief 构造函数。

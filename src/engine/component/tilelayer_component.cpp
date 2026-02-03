@@ -3,7 +3,6 @@
 #include "transform_component.h"
 #include "../core/context.h"
 #include "../render/renderer.h"
-#include "../physics/physics_engine.h"
 #include "../render/camera.h"
 #include <spdlog/spdlog.h>
 #include <glm/ext/vector_int2.hpp> // 修复VCIC001警告
@@ -202,9 +201,6 @@ void TileLayerComponent::update(float deltaTime, engine::core::Context& context)
  */
 void TileLayerComponent::clean()
 {
-	if (physics_engine_) {
-		physics_engine_->unregisterCollisionLayer(this);
-	}
 }
 
 }  // namespace engine::component

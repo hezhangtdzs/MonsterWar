@@ -4,13 +4,10 @@
 #include "../scene/scene.h"
 #include "../component/transform_component.h"
 #include "../component/sprite_component.h"
-#include "../component/collider_component.h"
-#include "../component/physics_component.h"
 #include "../component/animation_component.h"
 #include "../component/health_component.h"
 #include "../component/audio_component.h"
 #include "../component/tilelayer_component.h"
-#include "../physics/collider.h"
 #include "../render/sprite.h"
 #include "../render/animation.h"
 #include "../resource/resource_manager.h"
@@ -78,7 +75,6 @@ namespace engine::object {
         buildBase();
         buildTransform();
         buildSprite();
-        buildPhysics();
         buildAnimation();
         buildAudio();
         buildHealth();
@@ -144,73 +140,6 @@ namespace engine::object {
         );
     }
 
-    void ObjectBuilder::buildPhysics() {
-        if (!game_object_) return;
-
-        // 处理形状对象（无图像）的碰撞
-        if (!tile_json_) {
-            if (dst_size_.x > 0 && dst_size_.y > 0) {
-                auto collider = std::make_unique<engine::physics::AABBCollider>(dst_size_);
-                game_object_->addComponent<engine::component::ColliderComponent>(std::move(collider));
-                game_object_->addComponent<engine::component::PhysicsComponent>(&context_.getPhysicsEngine(), false);
-            }
-            
-            // 处理属性
-            if (auto tag = getTileProperty<std::string>(*object_json_, "tag"); tag) {
-                game_object_->setTag(tag.value());
-            }
-            return;
-        }
-
-        // 处理带图像对象的物理组件
-        bool has_physics = false;
-        
-        // 根据瓦片类型添加碰撞器
-        if (tile_info_.type == engine::component::TileType::SOLID) {
-            auto collider = std::make_unique<engine::physics::AABBCollider>(src_size_);
-            game_object_->addComponent<engine::component::ColliderComponent>(std::move(collider));
-            game_object_->setTag("solid");
-            has_physics = true;
-        }
-        else if (tile_info_.type == engine::component::TileType::HAZARD) {
-            auto rect = getCollisionRect(*tile_json_);
-            auto collider_size = rect.has_value() ? rect->size : src_size_;
-            auto collider = std::make_unique<engine::physics::AABBCollider>(collider_size);
-            auto collider_component = game_object_->addComponent<engine::component::ColliderComponent>(std::move(collider));
-            if (rect.has_value()) {
-                collider_component->setOffset(rect->position);
-            }
-            game_object_->setTag("hazard");
-            has_physics = true;
-        }
-        else if (auto rect = getCollisionRect(*tile_json_); rect.has_value()) {
-            auto collider = std::make_unique<engine::physics::AABBCollider>(rect->size);
-            auto collider_component = game_object_->addComponent<engine::component::ColliderComponent>(std::move(collider));
-            collider_component->setOffset(rect->position);
-            has_physics = true;
-        }
-
-        // 处理标签属性
-        if (auto tag = getTileProperty<std::string>(*tile_json_, "tag"); tag) {
-            game_object_->setTag(tag.value());
-        }
-
-        // 处理重力属性
-        if (auto gravity = getTileProperty<bool>(*tile_json_, "gravity"); gravity) {
-            auto* pc = game_object_->getComponent<engine::component::PhysicsComponent>();
-            if (pc) {
-                pc->setUseGravity(gravity.value());
-            } else {
-                game_object_->addComponent<engine::component::PhysicsComponent>(&context_.getPhysicsEngine(), gravity.value());
-                has_physics = true;
-            }
-        }
-
-        // 如果有碰撞器但没有物理组件，添加一个静态物理组件
-        if (has_physics && !game_object_->getComponent<engine::component::PhysicsComponent>()) {
-            game_object_->addComponent<engine::component::PhysicsComponent>(&context_.getPhysicsEngine(), false);
-        }
-    }
 
     void ObjectBuilder::buildAnimation() {
         if (!game_object_ || !tile_json_) return;

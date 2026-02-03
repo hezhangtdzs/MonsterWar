@@ -25,10 +25,7 @@ namespace engine::core
 {
 	class GameState;
 }
-namespace engine::physics
-{
-	class PhysicsEngine;
-}
+
 
 namespace engine::core
 {
@@ -52,8 +49,6 @@ namespace engine::core
 		engine::render::Camera& camera_;
 		/// 输入管理器引用
 		engine::input::InputManager& input_manager_;
-		/// 物理引擎引用
-		engine::physics::PhysicsEngine& physics_engine_;
 		/// 游戏状态引用
 		engine::core::GameState& game_state_;
 	public:
@@ -64,7 +59,6 @@ namespace engine::core
 		 * @param camera 摄像机引用
 		 * @param resource_manager 资源管理器引用
 		 * @param input_manager 输入管理器引用
-		 * @param physics_engine 物理引擎引用
 		 * @param game_state 游戏状态引用
 		 */
 		Context(engine::render::Renderer& renderer,
@@ -72,7 +66,6 @@ namespace engine::core
 				engine::render::Camera& camera,
 				engine::resource::ResourceManager& resource_manager,
 				engine::input::InputManager& input_manager,
-				engine::physics::PhysicsEngine& physics_engine,
 				engine::core::GameState& game_state);
 			
 
@@ -125,15 +118,6 @@ namespace engine::core
 		engine::input::InputManager& getInputManager()
 		{
 			return input_manager_;
-		}
-		
-		/**
-		 * @brief 获取物理引擎引用。
-		 * @return engine::physics::PhysicsEngine& 物理引擎引用
-		 */
-		engine::physics::PhysicsEngine& getPhysicsEngine()
-		{
-			return physics_engine_;
 		}
 		
 		/**

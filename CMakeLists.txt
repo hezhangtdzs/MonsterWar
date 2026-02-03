@@ -70,10 +70,8 @@ set(CORE_SOURCES
     src/engine/component/animation_component.cpp
     src/engine/component/audio_component.cpp
     src/engine/component/ai_component.cpp
-    src/engine/component/collider_component.cpp
     src/engine/component/health_component.cpp
     src/engine/component/parallax_component.cpp
-    src/engine/component/physics_component.cpp
     src/engine/component/sprite_component.cpp
     src/engine/component/tilelayer_component.cpp
     src/engine/component/transform_component.cpp
@@ -85,8 +83,6 @@ set(CORE_SOURCES
     src/engine/scene/scene.cpp
     src/engine/scene/scene_manager.cpp
 
-    src/engine/physics/collision.cpp
-    src/engine/physics/physics_engine.cpp
 
     src/engine/interface/subject.cpp
     src/engine/interface/observer.cpp

@@ -3,7 +3,6 @@
 #include <algorithm> 
 #include "../core/context.h"
 #include "../core/game_state.h"
-#include "../physics/physics_engine.h"
 #include "../object/game_object.h"
 #include "../render/camera.h" // 添加Camera头文件
 #include "../ui/ui_manager.h" // 添加UI管理器头文件
@@ -45,7 +44,6 @@ void engine::scene::Scene::update(float delta_time)
 	if(!is_initialized_) return;
 	// 先更新物理，再更新相机与对象逻辑，避免同一帧重复积分导致抖动/延迟感
 	if(context_.getGameState().isPlaying()){
-		context_.getPhysicsEngine().update(delta_time);
 		context_.getCamera().update(delta_time); // 更新相机
 	}
 

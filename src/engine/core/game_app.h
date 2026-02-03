@@ -25,10 +25,7 @@ namespace engine::scene
 {
     class SceneManager;
 }
-namespace engine::physics
-{
-    class PhysicsEngine;
-}
+
 namespace engine::audio
 {
     class IAudioPlayer;
@@ -76,8 +73,6 @@ namespace engine::core {
         std::unique_ptr<engine::core::Context> context_;
         /// 场景管理器
         std::unique_ptr<engine::scene::SceneManager> scene_manager_;
-        /// 物理引擎
-        std::unique_ptr<engine::physics::PhysicsEngine> physics_engine_;
         /// 音频播放器
         std::unique_ptr<engine::audio::IAudioPlayer> audio_player_;
         /// 游戏状态
@@ -205,7 +200,6 @@ namespace engine::core {
          * @brief 初始化物理引擎。
          * @return bool 初始化成功返回 true，否则返回 false。
          */
-        [[nodiscard]] bool initPhysicsEngine();
         
         /**
          * @brief 初始化音频播放器。

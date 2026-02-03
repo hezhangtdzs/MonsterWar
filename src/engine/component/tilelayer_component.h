@@ -4,9 +4,6 @@
 #include <glm/vec2.hpp>
 #include "../render/sprite.h"
 
-namespace engine::physics {
-	class PhysicsEngine;
-}
 
 namespace engine::object {
 	class GameObject;
@@ -65,7 +62,6 @@ namespace engine::component {
 		friend class engine::object::GameObject;
 	private:
 
-		engine::physics::PhysicsEngine* physics_engine_{ nullptr }; ///< 指向物理引擎的指针，用于注册碰撞图层
 		glm::ivec2 tile_size_;          ///< 单个瓦片的像素尺寸 (width, height)
 		glm::ivec2 map_size_;           ///< 地图的网格尺寸 (columns, rows)
 		std::vector<TileInfo> tiles_;   ///< 拍平的一维瓦片数组，行优先存储
@@ -135,9 +131,6 @@ namespace engine::component {
 		 */
 		TileType getTileTypeAtWorldPos(const glm::vec2& world_pos) const;
 
-		void setPhysicsEngine(engine::physics::PhysicsEngine* physics_engine) {
-			physics_engine_ = physics_engine;
-		}
 	protected:
 		/** @brief 初始化组件 */
 		void init() override;

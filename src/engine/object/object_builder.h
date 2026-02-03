@@ -162,8 +162,6 @@ namespace engine::object {
          * @brief 构建物理组件
          * @details 根据类型创建碰撞器和物理组件
          */
-        virtual void buildPhysics();
-
         /**
          * @brief 构建动画组件
          * @details 解析动画JSON配置

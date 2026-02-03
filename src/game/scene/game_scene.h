@@ -29,6 +29,12 @@ namespace game::scene {
 
         /** @brief 初始化游戏场景内容。在进入场景时由 SceneManager 调用。 */
         void init() override;
+        void clean() override;
+
+
+    private:
+        void handleJump();
+        void handleAttack();
 
         // 其他游戏场景特定的方法可以在此处添加
     };

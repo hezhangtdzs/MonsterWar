@@ -9,6 +9,7 @@
 #include <SDL3/SDL_render.h>
 #include <glm/vec2.hpp>
 #include <vector>
+#include <entt/entt.hpp>
 #include <variant>
 
 namespace engine::core
@@ -27,10 +28,11 @@ namespace engine::input
 	 * @brief 动作的状态枚举
 	 */
 	enum class ActionState {
-		INACTIVE,           ///< 动作未激活
-		PRESSED_THIS_FRAME, ///< 动作在本帧刚刚被按下
-		HELD_DOWN,          ///< 动作被持续按下
-		RELEASED_THIS_FRAME ///< 动作在本帧刚刚被释放
+		          ///< 动作未激活
+		PRESSED, ///< 动作在本帧刚刚被按下
+		HELD,          ///< 动作被持续按下
+		RELEASED, ///< 动作在本帧刚刚被释放
+		INACTIVE, ///< 动作未激活
 	};
 
 	/**
@@ -45,17 +47,20 @@ namespace engine::input
 		SDL_Renderer* sdl_renderer_; ///< SDL 渲染器，用于坐标转换
 
 		/**
+		 * @brief 动作对应的实体列表
+		 * 每个动作名称映射到一个包含三个信号槽的数组，分别对应按下、持续按下和释放事件。
+		 * 这些信号槽用于注册实体对特定动作事件的响应。
+		 * @see entt::sigh
+		 */
+		std::unordered_map<std::string,std::array<entt::sigh<void()>,3>> action_entities_; ///< 动作对应的实体列表
+
+		/**
 		 * @brief 输入映射表。
 		 * 键可以是 SDL_Scancode (键盘) 或 Uint32 (鼠标按钮)。
 		 * 值是关联到该输入的动作名称列表。
 		 */
 		std::unordered_map<std::variant<SDL_Scancode, Uint32>, std::vector<std::string>> input_to_action_;
 		
-		/**
-		 * @brief 动作名到按键名称的映射。
-		 * 从配置中加载，用于初始化。
-		 */
-		std::unordered_map<std::string, std::vector<std::string>> actions_to_keyname_;
 
 		/**
 		 * @brief 动作当前的状态表
@@ -77,6 +82,15 @@ namespace engine::input
 		 * 每一帧调用一次，处理事件并更新动作状态。
 		 */
 		void Update();
+
+		/**
+		 * @brief 为特定动作注册实体响应函数
+		 * 
+		 * @param action_name 动作名称
+		 * @param state 动作状态（按下、持续按下或释放）
+		 * @return 实体响应函数的信号槽
+		 */
+		entt::sink<entt::sigh<void()>> onAction(const std::string& action_name, ActionState state = ActionState::PRESSED);
 
 		/**
 		 * @brief 检查动作是否处于按下状态（包括刚按下和持续按下）

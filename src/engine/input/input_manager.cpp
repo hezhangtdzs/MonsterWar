@@ -35,10 +35,10 @@ InputManager::InputManager(SDL_Renderer* sdl_renderer, const engine::core::Confi
 void InputManager::Update()
 {
 	for (auto& [state_name, state] : action_states_) {
-		if (state == ActionState::PRESSED_THIS_FRAME) {
-			state = ActionState::HELD_DOWN;
+		if (state == ActionState::PRESSED) {
+			state = ActionState::HELD;
 		}
-		else if (state == ActionState::RELEASED_THIS_FRAME) {
+		else if (state == ActionState::RELEASED) {
 			state = ActionState::INACTIVE;
 		}
 	}
@@ -46,11 +46,34 @@ void InputManager::Update()
 	while (SDL_PollEvent(&event)) {
 		processEvent(event);
 	}
+	// 触发对应动作的实体响应
+	for (auto& [action_name, state] : action_states_) {
+		if(state != ActionState::INACTIVE) {
+			if(auto it = action_entities_.find(action_name); it != action_entities_.end()) {
+				it->second.at(static_cast<size_t>(state)).publish();
+			}
+		}
+	}
+}
+
+entt::sink<entt::sigh<void()>> InputManager::onAction(const std::string &action_name, ActionState state)
+{
+	if (action_states_.find(action_name) == action_states_.end()) {
+		spdlog::warn("输入管理器: 动作 '{}' 未在配置中定义, 绑定的事件将永远不会被触发。请检查 config.json 中的拼写。", action_name);
+	}
+
+	size_t state_idx = static_cast<size_t>(state);
+	if (state_idx >= 3) {
+		spdlog::error("输入管理器: 尝试为无效的状态 ({}) 绑定动作 '{}'。", state_idx, action_name);
+		throw std::out_of_range("输入管理器: ActionState 索引超出范围");
+	}
+
+	return action_entities_[action_name].at(state_idx);
 }
 
 /**
  * @brief 检查动作是否处于按下状态（包括刚按下和持续按下）
- * 
+ *
  * @param action_name 动作名称
  * @return 是否按下
  * @details 检查指定动作是否处于按下状态，包括刚按下和持续按下的情况
@@ -60,7 +83,7 @@ bool InputManager::isActionDown(const std::string& action_name) const
 	if (auto it = action_states_.find(action_name); it == action_states_.end()) {
 		spdlog::warn("输入映射警告: 未找到动作 '{}'.", action_name);
 		return false;
-	}else return it->second == ActionState::HELD_DOWN || it->second == ActionState::PRESSED_THIS_FRAME;
+	}else return it->second == ActionState::HELD || it->second == ActionState::PRESSED;
 }
 
 /**
@@ -75,7 +98,7 @@ bool InputManager::isActionPressed(const std::string& action_name) const
 	if (auto it = action_states_.find(action_name); it == action_states_.end()) {
 		spdlog::warn("输入映射警告: 未找到动作 '{}'.", action_name);
 		return false;
-	}else return it->second == ActionState::PRESSED_THIS_FRAME;
+	}else return it->second == ActionState::PRESSED;
 
 }
 
@@ -92,7 +115,7 @@ bool InputManager::isActionReleased(const std::string& action_name) const
 		spdlog::warn("输入映射警告: 未找到动作 '{}'.", action_name);
 		return false;
 	}
-	else return it->second == ActionState::RELEASED_THIS_FRAME;
+	else return it->second == ActionState::RELEASED;
 }
 
 /**
@@ -156,7 +179,7 @@ void InputManager::processEvent(const SDL_Event& event)
 		bool is_down = event.key.down;
 		bool is_repeat = event.key.repeat;
 		if (auto it = input_to_action_.find(scancode); it == input_to_action_.end()) {
-			spdlog::warn("输入映射警告: 未找到按键 {} 的映射.", SDL_GetScancodeName(scancode));
+			spdlog::debug("输入映射: 未找到按键 {} 的映射.", SDL_GetScancodeName(scancode));
 			return;
 		}
 		else {
@@ -172,7 +195,7 @@ void InputManager::processEvent(const SDL_Event& event)
 		Uint32 mouse_button = event.button.button;
 		bool is_down = (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN);
 		if (auto it = input_to_action_.find(mouse_button); it == input_to_action_.end()) {
-			spdlog::warn("输入映射警告: 未找到鼠标按钮 {} 的映射.", mouse_button);
+			spdlog::debug("输入映射: 未找到鼠标按钮 {} 的映射.", mouse_button);
 			return;
 		}
 		else {
@@ -206,17 +229,17 @@ void InputManager::processEvent(const SDL_Event& event)
 void InputManager::initializeMapFromConfig(const engine::core::Config* config)
 {
 	spdlog::trace("初始化输入映射...");
-	actions_to_keyname_ = config->input_mappings_;
+	auto actions_to_keyname_ = config->input_mappings_;
 	input_to_action_.clear();
 	action_states_.clear();
 
-	if (actions_to_keyname_.find("MouseLeftClick") == actions_to_keyname_.end()) {
-		spdlog::debug("配置中没有定义 'MouseLeftClick' 动作, 添加默认映射到 'MouseLeft'.");
-		actions_to_keyname_["MouseLeftClick"] = { "MouseLeft" };
+	if (actions_to_keyname_.find("mouse_left") == actions_to_keyname_.end()) {
+		spdlog::debug("配置中没有定义 'mouse_left' 动作, 添加默认映射到 'mouse_left'.");
+		actions_to_keyname_["mouse_left"] = { "mouse_left" };
 	}
-	if (actions_to_keyname_.find("MouseRightClick") == actions_to_keyname_.end()) {
-		spdlog::debug("配置中没有定义 'MouseRightClick' 动作, 添加默认映射到 'MouseRight'.");
-		actions_to_keyname_["MouseRightClick"] = { "MouseRight" };
+	if (actions_to_keyname_.find("mouse_right") == actions_to_keyname_.end()) {
+		spdlog::debug("配置中没有定义 'mouse_right' 动作, 添加默认映射到 'mouse_right'.");
+		actions_to_keyname_["mouse_right"] = { "mouse_right" };
 	}
 
 	for (const auto& [action_name, key_names] : actions_to_keyname_) {
@@ -260,15 +283,15 @@ void InputManager::updateActionStates(const std::string& action_name, bool is_in
 	else {
 		if (is_input_active) {
 			if (is_repeat_event) {
-				it->second = ActionState::HELD_DOWN;
+				it->second = ActionState::HELD;
 			}
 			else {
-				it->second = ActionState::PRESSED_THIS_FRAME;
+				it->second = ActionState::PRESSED;
 			}
 		}
 		else {
-			it->second = ActionState::RELEASED_THIS_FRAME;
-		}
+			it->second = ActionState::RELEASED;
+		}	
 	}
 
 }

@@ -44,6 +44,8 @@ namespace engine::input
 	class InputManager final
 	{
 	private:
+		entt::dispatcher* dispatcher_; ///< 事件分发器
+		
 		SDL_Renderer* sdl_renderer_; ///< SDL 渲染器，用于坐标转换
 
 		/**
@@ -52,7 +54,7 @@ namespace engine::input
 		 * 这些信号槽用于注册实体对特定动作事件的响应。
 		 * @see entt::sigh
 		 */
-		std::unordered_map<std::string,std::array<entt::sigh<void()>,3>> action_entities_; ///< 动作对应的实体列表
+		std::unordered_map<std::string,std::array<entt::sigh<bool()>,3>> action_entities_; ///< 动作对应的实体列表
 
 		/**
 		 * @brief 输入映射表。
@@ -67,7 +69,7 @@ namespace engine::input
 		 */
 		std::unordered_map<std::string, ActionState> action_states_;
 
-		bool should_quit_ = false; ///< 是否收到退出信号
+		glm::vec2 logical_mouse_position_; ///< 逻辑渲染坐标系下的鼠标位置
 		glm::vec2 mouse_position_; ///< 窗口坐标系下的鼠标位置
 	public:
 		/**
@@ -75,7 +77,7 @@ namespace engine::input
 		 * @param sdl_renderer SDL 渲染器指针
 		 * @param config 配置对象，用于加载输入映射
 		 */
-		InputManager(SDL_Renderer* sdl_renderer, const engine::core::Config* config);
+		InputManager(SDL_Renderer* sdl_renderer, entt::dispatcher* dispatcher, const engine::core::Config* config);
 		
 		/**
 		 * @brief 更新输入状态。
@@ -90,7 +92,7 @@ namespace engine::input
 		 * @param state 动作状态（按下、持续按下或释放）
 		 * @return 实体响应函数的信号槽
 		 */
-		entt::sink<entt::sigh<void()>> onAction(const std::string& action_name, ActionState state = ActionState::PRESSED);
+		entt::sink<entt::sigh<bool()>> onAction(const std::string& action_name, ActionState state = ActionState::PRESSED);
 
 		/**
 		 * @brief 检查动作是否处于按下状态（包括刚按下和持续按下）
@@ -119,17 +121,7 @@ namespace engine::input
 		 */
 		glm::vec2 getMousePosition() const;
 
-		/**
-		 * @brief 是否应该退出程序
-		 * @return 是否退出
-		 */
-		bool shouldQuit() const;
-
-		/**
-		 * @brief 设置退出信号
-		 * @param value 退出值
-		 */
-		void setShouldQuit(bool value);
+		void quit();
 
 		/**
 		 * @brief 获取鼠标在逻辑渲染坐标系下的位置。

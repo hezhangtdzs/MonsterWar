@@ -1,5 +1,6 @@
 #include "input_manager.h"
 #include "spdlog/spdlog.h"
+#include "../utils/events.h"
 #include "../core/config.h"
 
 namespace engine::input {
@@ -11,8 +12,8 @@ namespace engine::input {
  * @param config 配置对象，用于加载输入映射
  * @details 初始化输入管理器，设置渲染器，加载输入映射，获取初始鼠标位置
  */
-InputManager::InputManager(SDL_Renderer* sdl_renderer, const engine::core::Config* config)
-	:sdl_renderer_(sdl_renderer)
+InputManager::InputManager(SDL_Renderer* sdl_renderer, entt::dispatcher* dispatcher, const engine::core::Config* config)
+	:sdl_renderer_(sdl_renderer), dispatcher_(dispatcher)
 {
 	if (!sdl_renderer_) {
 		spdlog::error("输入管理器: SDL_Renderer 为空指针");
@@ -50,13 +51,19 @@ void InputManager::Update()
 	for (auto& [action_name, state] : action_states_) {
 		if(state != ActionState::INACTIVE) {
 			if(auto it = action_entities_.find(action_name); it != action_entities_.end()) {
-				it->second.at(static_cast<size_t>(state)).publish();
+				it->second.at(static_cast<size_t>(state)).collect([](bool result){ 
+					return result;
+				});
 			}
 		}
 	}
 }
 
-entt::sink<entt::sigh<void()>> InputManager::onAction(const std::string &action_name, ActionState state)
+void InputManager::quit() {
+    dispatcher_->trigger<engine::utils::QuitEvent>();
+}
+
+entt::sink<entt::sigh<bool()>> InputManager::onAction(const std::string &action_name, ActionState state)
 {
 	if (action_states_.find(action_name) == action_states_.end()) {
 		spdlog::warn("输入管理器: 动作 '{}' 未在配置中定义, 绑定的事件将永远不会被触发。请检查 config.json 中的拼写。", action_name);
@@ -129,27 +136,6 @@ glm::vec2 InputManager::getMousePosition() const
 	return mouse_position_;
 }
 
-/**
- * @brief 是否应该退出程序
- * 
- * @return 是否退出
- * @details 检查是否收到了退出信号
- */
-bool InputManager::shouldQuit() const
-{
-	return should_quit_;
-}
-
-/**
- * @brief 设置退出信号
- * 
- * @param value 退出值
- * @details 设置程序是否应该退出
- */
-void InputManager::setShouldQuit(bool value)
-{
-	should_quit_ = value;
-}
 
 /**
  * @brief 获取鼠标在逻辑渲染坐标系下的位置
@@ -159,9 +145,7 @@ void InputManager::setShouldQuit(bool value)
  */
 glm::vec2 InputManager::getLogicalMousePosition() const
 {
-	glm::vec2 logical_pos;
-	SDL_RenderCoordinatesFromWindow(sdl_renderer_, mouse_position_.x, mouse_position_.y, &logical_pos.x, &logical_pos.y);
-	return logical_pos;
+	return logical_mouse_position_;
 }
 
 /**
@@ -204,14 +188,20 @@ void InputManager::processEvent(const SDL_Event& event)
 				updateActionStates(action_name, is_down, false);
 			}
 		}
+		// 计算逻辑渲染坐标系下的鼠标位置
+		mouse_position_ = {event.button.x, event.button.y};
+		SDL_RenderCoordinatesFromWindow(sdl_renderer_, mouse_position_.x, mouse_position_.y, &logical_mouse_position_.x, &logical_mouse_position_.y);
 		break;
 	}
 	case SDL_EVENT_MOUSE_MOTION: {
 		mouse_position_ = glm::vec2(event.motion.x, event.motion.y);
+		// 计算逻辑渲染坐标系下的鼠标位置
+        mouse_position_ = {event.motion.x, event.motion.y};
+        SDL_RenderCoordinatesFromWindow(sdl_renderer_, mouse_position_.x, mouse_position_.y, &logical_mouse_position_.x, &logical_mouse_position_.y);
 		break;
 	}
 	case SDL_EVENT_QUIT: {
-		should_quit_=true;
+		quit();
 		break;
 	}
 	default:

@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <functional>
+#include <entt/signal/dispatcher.hpp>
 // Forward declarations in global namespace
 struct SDL_Renderer;
 struct SDL_Window;
@@ -48,6 +49,7 @@ namespace engine::core {
      */
     class GameApp final{
     private:
+        std::unique_ptr<entt::dispatcher> dispatcher_;        ///< 事件分发器
         /// 游戏运行状态标志
         bool is_running_{false};
         /// SDL 渲染器指针
@@ -78,7 +80,7 @@ namespace engine::core {
         /// 游戏状态
         std::unique_ptr<GameState> game_state_;
         /// 初始化回调函数
-        std::function<void(engine::scene::SceneManager&)> on_init_;
+        std::function<void(engine::core::Context&)> on_init_;
 
     public:
         /**
@@ -104,9 +106,9 @@ namespace engine::core {
         
         /**
          * @brief 设置初始化回调函数。
-         * @param callback 初始化回调函数，接收 SceneManager 引用。
+         * @param callback 初始化回调函数，接收 Context 引用。
          */
-        void setOnInitCallback(std::function<void(engine::scene::SceneManager&)> callback);
+        void setOnInitCallback(std::function<void(engine::core::Context&)> callback);
         
     private:
         /**
@@ -212,6 +214,12 @@ namespace engine::core {
          * @return bool 初始化成功返回 true，否则返回 false。
          */
         [[nodiscard]] bool initGameState();
+        /**
+         * @brief 初始化事件分发器。
+         * @return bool 初始化成功返回 true，否则返回 false。
+         */
+        [[nodiscard]] bool initDispatcher();
 
+        void onQuitEvent();
     };
 }

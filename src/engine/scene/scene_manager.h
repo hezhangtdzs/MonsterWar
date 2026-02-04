@@ -1,7 +1,7 @@
 #pragma once
 #include <vector>
 #include <memory>
-
+#include "../utils/events.h"
 namespace game::data {
 	class SessionData;
 }
@@ -54,15 +54,9 @@ namespace engine::scene {
 		SceneManager(SceneManager&&) = delete;
 		SceneManager& operator=(SceneManager&&) = delete;
 
-		/** @brief 异步请求：将一个新场景压入栈顶（当前场景会被暂停但不销毁）。 */
-		void requestPushScene(std::unique_ptr<Scene>&& scene);
-
-		/** @brief 异步请求：弹出当前栈顶场景，返回到上一个场景。 */
-		void requestPopScene();
-
-		/** @brief 异步请求：清空当前所有场景，并切换到全新的场景。 */
-		void requestReplaceScene(std::unique_ptr<Scene>&& scene);
-
+		void onPopScene();
+		void onPushScene(utils::PushSceneEvent& event);
+		void onReplaceScene(utils::ReplaceSceneEvent& event);
 		/**
 		 * @brief 获取当前正处于栈顶的活动场景。
 		 * @return Scene* 指向当前场景的指针，如果栈为空则返回 nullptr。

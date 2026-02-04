@@ -5,6 +5,7 @@
  */
 
 #include "../render/camera.h"
+#include <entt/entt.hpp>
 #include "../render/text_renderer.h"
 
 namespace engine::input{
@@ -45,6 +46,8 @@ namespace engine::core
 		engine::render::Renderer& renderer_;
 		/// 文本渲染器引用
 		engine::render::TextRenderer& text_renderer_;
+		/// 事件分发器指针
+		entt::dispatcher& dispatcher_;
 		/// 摄像机引用
 		engine::render::Camera& camera_;
 		/// 输入管理器引用
@@ -63,6 +66,7 @@ namespace engine::core
 		 */
 		Context(engine::render::Renderer& renderer,
 				engine::render::TextRenderer& text_renderer,
+				entt::dispatcher& dispatcher,
 				engine::render::Camera& camera,
 				engine::resource::ResourceManager& resource_manager,
 				engine::input::InputManager& input_manager,
@@ -128,6 +132,15 @@ namespace engine::core
 		{
 			return game_state_;
 		}
+		/**
+		 * @brief 获取事件分发器引用。
+		 * @return entt::dispatcher& 事件分发器引用
+		 */
+		entt::dispatcher& getDispatcher()
+		{
+			return dispatcher_;
+		}
+
 	};
 
 }

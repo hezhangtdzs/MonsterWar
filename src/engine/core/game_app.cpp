@@ -17,6 +17,7 @@
 #include "../audio/audio_player.h"
 #include "../audio/audio_locator.h"
 #include "../audio/log_audio_player.h"
+#include "../utils/events.h"
 
 
 /**
@@ -60,7 +61,7 @@ void engine::core::GameApp::run()
 	close();
 }
 
-void engine::core::GameApp::setOnInitCallback(std::function<void(engine::scene::SceneManager &)> callback)
+void engine::core::GameApp::setOnInitCallback(std::function<void(engine::core::Context&)> callback)
 {
     on_init_ = std::move(callback);
 }
@@ -81,6 +82,7 @@ bool engine::core::GameApp::init()
 		initTextRenderer()&&
 		initCamera()&&
 		initGameState()&&
+		initDispatcher()&&
 		initContext()&&
 		initSceneManager()) 
 	{
@@ -89,8 +91,9 @@ bool engine::core::GameApp::init()
 		
 		// 调用初始化回调函数
 		if (on_init_) {
-			on_init_(*scene_manager_);
+			on_init_(*context_);
 		}
+		dispatcher_->sink<utils::QuitEvent>().connect<&GameApp::onQuitEvent>(this);
 
 		// // 创建并推送第一个游戏场景，传入会话数据
 		// auto scene = std::make_unique<game::scene::TitleScene>(
@@ -131,6 +134,7 @@ void engine::core::GameApp::update(float& delta_time)
 	if (scene_manager_) {
 		scene_manager_->update(delta_time);
 	}
+	dispatcher_->update();
 }
 
 /**
@@ -155,6 +159,7 @@ void engine::core::GameApp::render()
  */
 void engine::core::GameApp::close()
 {
+	dispatcher_->sink<engine::utils::QuitEvent>().disconnect<&GameApp::onQuitEvent>(this);
 	spdlog::trace("关闭 GameApp ...");
 	if (sdl_renderer_ != nullptr) {
 		SDL_DestroyRenderer(sdl_renderer_);
@@ -333,6 +338,7 @@ bool engine::core::GameApp::initContext()
 		context_= std::make_unique<engine::core::Context>(
 			*renderer_,
 			*text_renderer_,
+			*dispatcher_,
 			*camera_,
 			*resource_manager_,
 			*input_manager_,
@@ -378,6 +384,24 @@ bool engine::core::GameApp::initGameState()
 		return false;
 	}
 	return true;
+}
+
+bool engine::core::GameApp::initDispatcher()
+{
+    try {
+		dispatcher_ = std::make_unique<entt::dispatcher>();
+	}
+	catch (const std::exception& e) {
+		spdlog::error("初始化事件分发器失败: {}", e.what());
+		return false;
+	}
+	return true;
+}
+
+void engine::core::GameApp::onQuitEvent()
+{
+	is_running_ = false;
+	spdlog::trace("GameApp 收到 QuitEvent 事件，准备退出游戏主循环。");
 }
 
 /**

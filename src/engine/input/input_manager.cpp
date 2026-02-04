@@ -234,12 +234,12 @@ void InputManager::initializeMapFromConfig(const engine::core::Config* config)
 	action_states_.clear();
 
 	if (actions_to_keyname_.find("mouse_left") == actions_to_keyname_.end()) {
-		spdlog::debug("配置中没有定义 'mouse_left' 动作, 添加默认映射到 'mouse_left'.");
-		actions_to_keyname_["mouse_left"] = { "mouse_left" };
+		spdlog::debug("配置中没有定义 'mouse_left' 动作, 添加默认映射到 'MouseLeft'.");
+		actions_to_keyname_["mouse_left"] = { "MouseLeft" };
 	}
 	if (actions_to_keyname_.find("mouse_right") == actions_to_keyname_.end()) {
-		spdlog::debug("配置中没有定义 'mouse_right' 动作, 添加默认映射到 'mouse_right'.");
-		actions_to_keyname_["mouse_right"] = { "mouse_right" };
+		spdlog::debug("配置中没有定义 'mouse_right' 动作, 添加默认映射到 'MouseRight'.");
+		actions_to_keyname_["mouse_right"] = { "MouseRight" };
 	}
 
 	for (const auto& [action_name, key_names] : actions_to_keyname_) {

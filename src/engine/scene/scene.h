@@ -27,7 +27,6 @@ namespace engine::scene {
 protected:
 	std::string scene_name_;                        ///< 场景的唯一标识名称
 	engine::core::Context& context_;               ///< 指向引擎全局上下文的引用
-	engine::scene::SceneManager& scene_manager_;    ///< 对管理该场景的场景管理器的引用
 
 	bool is_initialized_ = false;                   ///< 标记场景是否已完成初始化
 	std::vector<std::unique_ptr<engine::object::GameObject>> game_objects_;         ///< 当前活动的游戏对象容器
@@ -40,7 +39,7 @@ protected:
 		 * @param context 引擎上下文。
 		 * @param scene_manager 场景管理器引用。
 		 */
-		Scene(const std::string& scene_name, engine::core::Context& context, engine::scene::SceneManager& scene_manager);
+		Scene(const std::string& scene_name, engine::core::Context& context);
 		virtual ~Scene();
 
 		// 禁止拷贝和移动构造
@@ -85,14 +84,23 @@ protected:
 		const std::string& getSceneName() const { return scene_name_; }
 		bool isInitialized() const { return is_initialized_; }
 		engine::core::Context& getContext() const { return context_; }
-		engine::scene::SceneManager& getSceneManager() const {
-			return scene_manager_;
-		}
+
 
 		void setSceneName(const std::string& scene_name) { scene_name_ = scene_name; }
 		void setInitialized(bool initialized) {
 			is_initialized_= initialized;
 		}
+		/// @brief 请求弹出当前场景。
+		void requestPopScene();
+
+		/// @brief 请求压入一个新场景。
+		void requestPushScene(std::unique_ptr<engine::scene::Scene>&& scene);
+		
+		/// @brief 请求替换当前场景。
+		void requestReplaceScene(std::unique_ptr<engine::scene::Scene>&& scene);
+
+		/// @brief 退出游戏。
+		void quit();
 	private:
 		/** @brief 处理积压的游戏对象添加请求，确保容器操作的安全性。 */
 		void processPendingGameObjects();

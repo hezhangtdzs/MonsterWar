@@ -6,15 +6,15 @@
 #include "../object/game_object.h"
 #include "../render/camera.h" // 添加Camera头文件
 #include "../ui/ui_manager.h" // 添加UI管理器头文件
-
+#include "../utils/events.h"
 /**
  * @brief 构造函数。
  * @param scene_name 场景名称。
  * @param context 引擎上下文。
  * @param scene_manager 场景管理器引用。
  */
-engine::scene::Scene::Scene(const std::string& scene_name, engine::core::Context& context, engine::scene::SceneManager& scene_manager)
-	:scene_name_(scene_name), context_(context), scene_manager_(scene_manager)
+engine::scene::Scene::Scene(const std::string& scene_name, engine::core::Context& context)
+	:scene_name_(scene_name), context_(context)
 {
 	// 初始化UI管理器
 	ui_manager_ = std::make_unique<engine::ui::UIManager>(context_);
@@ -225,4 +225,24 @@ void engine::scene::Scene::processPendingGameObjects()
 	}
 	pending_game_objects_.clear();
 
+}
+
+void engine::scene::Scene::requestPopScene()
+{
+    context_.getDispatcher().trigger<engine::utils::PopSceneEvent>();
+}
+
+void engine::scene::Scene::requestPushScene(std::unique_ptr<engine::scene::Scene>&& scene)
+{
+    context_.getDispatcher().trigger<engine::utils::PushSceneEvent>(engine::utils::PushSceneEvent{std::move(scene)});
+}
+
+void engine::scene::Scene::requestReplaceScene(std::unique_ptr<engine::scene::Scene>&& scene)
+{
+    context_.getDispatcher().trigger<engine::utils::ReplaceSceneEvent>(engine::utils::ReplaceSceneEvent{std::move(scene)});
+}
+
+void engine::scene::Scene::quit()
+{
+    context_.getDispatcher().trigger<engine::utils::QuitEvent>();
 }

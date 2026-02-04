@@ -7,6 +7,8 @@
 #include<spdlog/spdlog.h>
 #include "engine/scene/scene_manager.h"
 #include "game/scene/game_scene.h"
+#include "engine/core/context.h"
+#include <entt/signal/dispatcher.hpp>
 /**
  * @brief 游戏的主入口函数。
  * @param argc 命令行参数数量
@@ -19,14 +21,17 @@
  * 3. 启动游戏应用的运行循环
  * 4. 返回退出状态码
  */
-void onInitSceneManager(engine::scene::SceneManager& scene_manager) {
-    scene_manager.requestPushScene(std::make_unique<game::scene::GameScene>(scene_manager.getContext(), scene_manager));
+void setupInitialScene(engine::core::Context& context) {
+    // GameApp在调用run方法之前，先创建并设置初始场景
+    auto game_scene = std::make_unique<game::scene::GameScene>(context);
+    context.getDispatcher().trigger<engine::utils::PushSceneEvent>(engine::utils::PushSceneEvent{std::move(game_scene)});
 }
+
 
 int main(int /* argc */, char* /* argv */[]) {
     engine::core::GameApp app;
     spdlog::set_level(spdlog::level::info);
-    app.setOnInitCallback(onInitSceneManager);
+    app.setOnInitCallback(setupInitialScene);
     app.run();
     return 0;
 }

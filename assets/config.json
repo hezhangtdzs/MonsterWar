@@ -38,6 +38,12 @@
             "D",
             "Right"
         ],
+        "mouse_left": [
+            "MouseLeft"
+        ],
+        "mouse_right": [
+            "MouseRight"
+        ],
         "attack": [
             "K",
             "MouseLeft"

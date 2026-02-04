@@ -1,7 +1,9 @@
 #include"scene_manager.h"
 #include "scene.h"
+#include "../core/context.h"
 #include <spdlog/spdlog.h>
-
+#include <entt/entt.hpp>
+#include <utility>
 namespace engine::scene {
 
 /**
@@ -13,6 +15,9 @@ SceneManager::SceneManager(engine::core::Context& context)
 	  session_data_initialized_(false)
 {
 	spdlog::info("SceneManager created");
+	context_.getDispatcher().sink<utils::PushSceneEvent>().connect<&SceneManager::onPushScene>(this);
+	context_.getDispatcher().sink<utils::PopSceneEvent>().connect<&SceneManager::onPopScene>(this);
+	context_.getDispatcher().sink<utils::ReplaceSceneEvent>().connect<&SceneManager::onReplaceScene>(this);
 }
 
 /**
@@ -27,29 +32,6 @@ SceneManager::~SceneManager() {
  * @brief 异步请求：将一个新场景压入栈顶（当前场景会被暂停但不销毁）。
  * @param scene 待压入的场景实例。
  */
-void SceneManager::requestPushScene(std::unique_ptr<Scene>&& scene)
-{
-	pending_action_ = PendingAction::Push;
-	pending_scene_ = std::move(scene);
-}
-
-/**
- * @brief 异步请求：弹出当前栈顶场景，返回到上一个场景。
- */
-void SceneManager::requestPopScene()
-{
-	pending_action_ = PendingAction::Pop;
-}
-
-/**
- * @brief 异步请求：清空当前所有场景，并切换到全新的场景。
- * @param scene 待替换的场景实例。
- */
-void SceneManager::requestReplaceScene(std::unique_ptr<Scene>&& scene)
-{
-	pending_action_ = PendingAction::Replace;
-	pending_scene_ = std::move(scene);
-}
 
 /**
  * @brief 获取当前正处于栈顶的活动场景。
@@ -114,6 +96,7 @@ void SceneManager::close()
 		}
 		scene_stack_.pop_back();
 	}
+	context_.getDispatcher().disconnect(this);
 }
 
 /**
@@ -164,6 +147,7 @@ void SceneManager::popScene()
 {
 	if (scene_stack_.empty()) {
 		spdlog::warn("尝试弹出场景失败：场景栈为空。");
+		context_.getDispatcher().trigger<utils::QuitEvent>();
 		return;
 	}
 	if (scene_stack_.back()) {
@@ -198,6 +182,23 @@ void SceneManager::replaceScene(std::unique_ptr<Scene>&& scene)
 
 	// 将新场景压入栈顶
 	scene_stack_.push_back(std::move(scene));
+}
+
+void SceneManager::onPopScene()
+{
+	pending_action_ = PendingAction::Pop;
+}
+
+void SceneManager::onPushScene(utils::PushSceneEvent &event)
+{
+	pending_action_ = PendingAction::Push;
+	pending_scene_ = std::move(event.scene);
+}
+
+void SceneManager::onReplaceScene(utils::ReplaceSceneEvent &event)
+{
+	pending_action_ = PendingAction::Replace;
+	pending_scene_ = std::move(event.scene);
 }
 
 } // namespace engine::scene

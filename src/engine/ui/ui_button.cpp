@@ -1,7 +1,6 @@
 #include "ui_button.h"
 #include "../core/context.h"
 #include "../input/input_manager.h"
-#include "../render/sprite.h"
 #include "state/normal_state.h"
 #include "state/hover_state.h"
 #include "state/pressed_state.h"
@@ -64,13 +63,13 @@ UIButton::UIButton(
     setPosition(position);
     
     // 创建并添加精灵
-    auto normal_sprite = std::make_unique<render::Sprite>(normal_sprite_path);
-    auto hover_sprite = std::make_unique<render::Sprite>(hover_sprite_path);
-    auto pressed_sprite = std::make_unique<render::Sprite>(pressed_sprite_path);
+    auto normal_sprite = std::make_unique<render::Image>(normal_sprite_path);
+    auto hover_sprite = std::make_unique<render::Image>(hover_sprite_path);
+    auto pressed_sprite = std::make_unique<render::Image>(pressed_sprite_path);
     
-    addSprite(engine::resource::typeId<state::NormalState>(), std::move(normal_sprite));
-    addSprite(engine::resource::typeId<state::HoverState>(), std::move(hover_sprite));
-    addSprite(engine::resource::typeId<state::PressedState>(), std::move(pressed_sprite));
+    addImage(engine::resource::typeId<state::NormalState>(), std::move(normal_sprite));
+    addImage(engine::resource::typeId<state::HoverState>(), std::move(hover_sprite));
+    addImage(engine::resource::typeId<state::PressedState>(), std::move(pressed_sprite));
     addSound(static_cast<engine::resource::ResourceId>(engine::resource::typeId<state::HoverState>()),
              static_cast<engine::resource::ResourceId>(engine::resource::toResourceId("ui_hover")));
     addSound(static_cast<engine::resource::ResourceId>(engine::resource::typeId<state::PressedState>()),
@@ -80,8 +79,8 @@ UIButton::UIButton(
         setSize(size);
     } else {
         // 如果没有指定大小，使用精灵大小
-        auto normal_sprite_ptr = getSprite(engine::resource::typeId<state::NormalState>());
-        if (normal_sprite_ptr) {
+        auto normal_image_ptr = getImage(engine::resource::typeId<state::NormalState>());
+        if (normal_image_ptr) {
             // 这里需要获取精灵的大小，假设Sprite类有getSize方法
             // setSize(normal_sprite_ptr->getSize());
             // 暂时使用默认大小

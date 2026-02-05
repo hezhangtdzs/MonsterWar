@@ -26,10 +26,10 @@ PressedState::PressedState(engine::ui::UIInteractive* owner)
  */
 void PressedState::enter() {
     if (auto interactive = dynamic_cast<engine::ui::UIInteractive*>(owner_)) {
-        // 切换到按下状态的精灵
-        auto pressed_sprite = interactive->getSprite(engine::resource::typeId<PressedState>());
-        if (pressed_sprite) {
-            interactive->setCurrentSprite(pressed_sprite);
+        // 切换到按下状态的图片
+        auto pressed_image = interactive->getImage(engine::resource::typeId<PressedState>());
+        if (pressed_image) {
+            interactive->setCurrentImage(pressed_image);
         }
         // 播放按下音效
         interactive->playSound(engine::resource::typeId<PressedState>());

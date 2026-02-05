@@ -54,6 +54,10 @@ set(CORE_SOURCES
     src/engine/render/renderer.cpp
     src/engine/render/text_renderer.cpp
 
+    src/engine/system/movement_system.cpp
+    src/engine/system/animation_system.cpp
+    src/engine/system/render_system.cpp
+
     src/engine/input/input_manager.cpp
 
     src/engine/ui/ui_button.cpp
@@ -67,17 +71,6 @@ set(CORE_SOURCES
     src/engine/ui/state/hover_state.cpp
     src/engine/ui/state/pressed_state.cpp
 
-    # src/engine/component/animation_component.cpp
-    # src/engine/component/audio_component.cpp
-    # src/engine/component/ai_component.cpp
-    # src/engine/component/health_component.cpp
-    # src/engine/component/parallax_component.cpp
-    # src/engine/component/sprite_component.cpp
-    # src/engine/component/tilelayer_component.cpp
-    # src/engine/component/transform_component.cpp
-
-    src/engine/object/game_object.cpp
-    # src/engine/object/object_builder.cpp
 
     # src/engine/scene/level_loader.cpp
     src/engine/scene/scene.cpp

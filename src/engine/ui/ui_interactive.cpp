@@ -82,11 +82,11 @@ void UIInteractive::render() {
         return;
     }
     
-    // 渲染当前精灵
-    if (current_sprite_) {
+    // 渲染当前图片
+    if (current_image_) {
         auto& renderer = context_.getRenderer();
         auto position = getWorldPosition();
-        renderer.drawUISprite(*current_sprite_, position, size_);
+        renderer.drawUIImage(*current_image_, position, size_);
     }
     
     // 渲染子元素
@@ -127,33 +127,33 @@ state::UIState* UIInteractive::getCurrentState() const {
  * 
  * 如果是第一个精灵，会自动设置为当前精灵。
  */
-void UIInteractive::addSprite(engine::resource::ResourceId name, std::unique_ptr<engine::render::Sprite> sprite) {
-    sprites_[name] = std::move(sprite);
-    // 如果是第一个精灵，设置为当前精灵
-    if (!current_sprite_) {
-        current_sprite_ = sprites_[name].get();
+void UIInteractive::addImage(engine::resource::ResourceId name, std::unique_ptr<engine::render::Image> image) {
+    images_[name] = std::move(image);
+    // 如果是第一个图片，设置为当前图片
+    if (!current_image_) {
+        current_image_ = images_[name].get();
     }
 }
 
 /**
- * @brief 获取精灵。
- * @param name 精灵名称。
- * @return 精灵指针，如果不存在则返回nullptr。
+ * @brief 获取图片。
+ * @param name 图片名称。
+ * @return 图片指针，如果不存在则返回nullptr。
  */
-engine::render::Sprite* UIInteractive::getSprite(engine::resource::ResourceId name) const {
-    auto it = sprites_.find(name);
-    if (it != sprites_.end()) {
+engine::render::Image* UIInteractive::getImage(engine::resource::ResourceId name) const {
+    auto it = images_.find(name);
+    if (it != images_.end()) {
         return it->second.get();
     }
     return nullptr;
 }
 
 /**
- * @brief 设置当前显示的精灵。
- * @param sprite 精灵指针。
+ * @brief 设置当前显示的图片。
+ * @param image 图片指针。
  */
-void UIInteractive::setCurrentSprite(engine::render::Sprite* sprite) {
-    current_sprite_ = sprite;
+void UIInteractive::setCurrentImage(engine::render::Image* image) {
+    current_image_ = image;
 }
 
 /**
@@ -193,12 +193,12 @@ void UIInteractive::playSound(engine::resource::ResourceId name) {
     }
 }
 
-void UIInteractive::addSprite(std::string_view name, std::unique_ptr<engine::render::Sprite> sprite) {
-    addSprite(engine::resource::toResourceId(name), std::move(sprite));
+void UIInteractive::addImage(std::string_view name, std::unique_ptr<engine::render::Image> image) {
+    addImage(engine::resource::toResourceId(name), std::move(image));
 }
 
-engine::render::Sprite* UIInteractive::getSprite(std::string_view name) const {
-    return getSprite(engine::resource::toResourceId(name));
+engine::render::Image* UIInteractive::getImage(std::string_view name) const {
+    return getImage(engine::resource::toResourceId(name));
 }
 
 void UIInteractive::addSound(std::string_view name, std::string_view sound_key_or_path) {

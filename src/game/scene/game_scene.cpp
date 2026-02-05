@@ -1,111 +1,107 @@
-/**
- * @file game_scene.cpp
- * @brief GameScene 类的实现，游戏主场景的具体逻辑。
- * 
- * 实现了场景初始化、清理和输入事件处理，包含资源ID测试、
- * 音频播放测试和UI元素测试功能。
- */
-
 #include "game_scene.h"
 #include "../../engine/core/context.h"
+#include "../../engine/component/transform_component.h"
+#include "../../engine/component/sprite_component.h"
+#include "../../engine/component/velocity_component.h"
+#include "../../engine/component/animation_component.h"
 #include "../../engine/input/input_manager.h"
+#include "../../engine/audio/audio_player.h"
 #include "../../engine/audio/audio_locator.h"
-#include "../../engine/resource/resource_id.h"
+#include "../../engine/resource/resource_manager.h"
+#include "../../engine/render/text_renderer.h"
+#include "../../engine/system/render_system.h"
+#include "../../engine/system/movement_system.h"
+#include "../../engine/system/animation_system.h"
 #include "../../engine/ui/ui_manager.h"
 #include "../../engine/ui/ui_image.h"
 #include "../../engine/ui/ui_text.h"
+#include <unordered_map>
+#include <entt/core/hashed_string.hpp>
 #include <entt/signal/sigh.hpp>
 #include <spdlog/spdlog.h>
 
+using namespace entt::literals;
+
 namespace game::scene {
- using namespace entt::literals;
+
 GameScene::GameScene(engine::core::Context& context)
     : engine::scene::Scene("GameScene", context) {
+
+    // 初始化系统
+    render_system_ = std::make_unique<engine::system::RenderSystem>();
+    movement_system_ = std::make_unique<engine::system::MovementSystem>();
+    animation_system_ = std::make_unique<engine::system::AnimationSystem>();
+
+    spdlog::info("GameScene 构造完成");
 }
 
 GameScene::~GameScene() {
 }
 
 void GameScene::init() {
-    // 测试场景编号, 每创建一个场景, 编号加1
-    static int count = 0;
-    scene_num_ = count++;
-    spdlog::info("场景编号: {}", scene_num_);
-
-    // --- 资源 ID 测试用例 ---
-    const auto battle_bgm_id = engine::resource::toResourceId("battle_bgm");
-    const auto ui_hover_id = engine::resource::toResourceId("ui_hover");
-
-    spdlog::info("battle_bgm id = {}", battle_bgm_id);
-    spdlog::info("ui_hover id = {}", ui_hover_id);
-
-    // 测试：通过映射表使用 ID 播放
-    engine::audio::AudioLocator::get().playMusic("battle_bgm"_hs);
-    engine::audio::AudioLocator::get().playSound(ui_hover_id);
-
-    // --- UI 图片/文字测试用例 ---
-    if (auto* ui_manager = getUIManager()) {
-        auto test_image = std::make_unique<engine::ui::UIImage>(
-            context_,
-            "assets/textures/UI/circle.png",
-            glm::vec2{ 32.0f, 32.0f },
-            glm::vec2{ 64.0f, 64.0f }
-        );
-        ui_manager->addElement(std::move(test_image));
-
-        auto test_text = std::make_unique<engine::ui::UIText>(
-            context_,
-            "UI Test: hashed id",
-            "assets/fonts/VonwaonBitmap-16px.ttf",
-            16
-        );
-        test_text->setPosition(glm::vec2{ 120.0f, 40.0f });
-        ui_manager->addElement(std::move(test_text));
-    }
-
-    // 注册输入回调事件
-    auto& input_manager = context_.getInputManager();
-    input_manager.onAction("jump").connect<&GameScene::onReplace>(this);       // J 键
-    input_manager.onAction("mouse_left").connect<&GameScene::onPush>(this);   // 鼠标左键
-    input_manager.onAction("mouse_right").connect<&GameScene::onPop>(this);   // 鼠标右键
-    input_manager.onAction("pause").connect<&GameScene::onQuit>(this);        // P 键
-
+    // 测试资源管理器
+    testResourceManager();
+    // 测试ECS
+    testECS();
+    
     Scene::init();
 }
 
+void GameScene::update(float delta_time) {
+    movement_system_->update(registry_, delta_time);
+    animation_system_->update(registry_, delta_time);
+
+    Scene::update(delta_time);
+}
+
+void GameScene::render() {
+    render_system_->update(registry_, context_.getRenderer(), context_.getCamera());
+
+    Scene::render();
+}
+
 void GameScene::clean() {
-    // 断开输入回调事件 (谁连接，谁负责断开)
-    auto& input_manager = context_.getInputManager();
-    input_manager.onAction("jump").disconnect<&GameScene::onReplace>(this);
-    input_manager.onAction("mouse_left").disconnect<&GameScene::onPush>(this);
-    input_manager.onAction("mouse_right").disconnect<&GameScene::onPop>(this);
-    input_manager.onAction("pause").disconnect<&GameScene::onQuit>(this);
 
     Scene::clean();
 }
 
-bool GameScene::onReplace() {
-    spdlog::info("onReplace, 切换场景");
-    requestReplaceScene(std::make_unique<game::scene::GameScene>(context_));
-    return true;
+void GameScene::testResourceManager() {
+    // 载入资源
+    context_.getResourceManager().loadTexture("assets/textures/Buildings/Castle.png"_hs);
+    // 播放音乐
+    engine::audio::AudioLocator::get().playSound("battle_bgm"_hs);
+    
+    
+    // 测试UI元素（使用载入的资源）
+    ui_manager_->addElement(std::make_unique<engine::ui::UIImage>(context_, "assets/textures/Buildings/Castle.png"_hs));
+    ui_manager_->addElement(std::make_unique<engine::ui::UIText>(
+        context_, 
+        "Hello, World!", 
+        "assets/fonts/VonwaonBitmap-16px.ttf"
+    ));
 }
 
-bool GameScene::onPush() {
-    spdlog::info("onPush, 压入场景");
-    requestPushScene(std::make_unique<game::scene::GameScene>(context_));
-    return true;
-}
-
-bool GameScene::onPop() {
-    spdlog::info("onPop, 弹出编号为 {} 的场景", scene_num_);
-    requestPopScene();
-    return true;
-}
-
-bool GameScene::onQuit() {
-    spdlog::info("onQuit, 退出游戏");
-    quit();
-    return true;
+void GameScene::testECS() {
+    auto entity = registry_.create();
+    // 变换、速度、精灵组件
+    registry_.emplace<engine::component::TransformComponent>(entity, glm::vec2(100, 100));
+    registry_.emplace<engine::component::VelocityComponent>(entity, glm::vec2(10, 10));
+    registry_.emplace<engine::component::SpriteComponent>(entity, 
+        engine::component::Sprite("assets/textures/Units/Archer.png", engine::utils::Rect(0, 0, 192, 192)));
+    
+    // 动画组件 (单一动画 -> 动画map -> AnimationComponent)
+    auto animation = engine::component::Animation(
+        {
+            engine::component::AnimationFrame(engine::utils::Rect(0, 0, 192, 192), 100),
+            engine::component::AnimationFrame(engine::utils::Rect(192, 0, 192, 192), 100),
+            engine::component::AnimationFrame(engine::utils::Rect(384, 0, 192, 192), 100),
+            engine::component::AnimationFrame(engine::utils::Rect(576, 0, 192, 192), 100),
+            engine::component::AnimationFrame(engine::utils::Rect(768, 0, 192, 192), 100),
+            engine::component::AnimationFrame(engine::utils::Rect(960, 0, 192, 192), 100)
+        }
+    );
+    auto animation_map = std::unordered_map<entt::id_type, engine::component::Animation>{{"idle"_hs, std::move(animation)}};
+    registry_.emplace<engine::component::AnimationComponent>(entity, std::move(animation_map), "idle"_hs);
 }
 
 } // namespace game::scene

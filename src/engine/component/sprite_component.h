@@ -1,140 +1,88 @@
 #pragma once
-#include "../render/sprite.h"
-#include "./component.h"
-#include "../utils/alignment.h"
-#include <string>
-#include <optional>
+#include "../utils/math.h"
 #include <SDL3/SDL_rect.h>
+#include <entt/core/hashed_string.hpp>
+#include <entt/entity/entity.hpp>
 #include <glm/vec2.hpp>
+#include <glm/common.hpp>
+#include <utility>
+#include <string>
 
-namespace engine::render {
-	class Sprite;
-}
-namespace engine::utils {
-	enum class Alignment;
-}
-namespace engine::resource
-{
-	class ResourceManager;
-}
 
 namespace engine::component {
-	class TransformComponent;
+	
+	/**
+	 * @struct Sprite
+	 * @brief 精灵组件
+	 * 
+	 * 负责实体的基础渲染信息，包括纹理引用和渲染区域。
+	 */
+	struct Sprite{
+		entt::id_type texture_id_{entt::null};  ///< 纹理资源的 ID
+    	std::string texture_path_;              ///< 纹理资源的文件路径（可选，用于加载或调试）
+    	engine::utils::Rect src_rect_{};        ///< 纹理中的源矩形区域（帧位置）
+    	bool is_flipped_{false};                ///< 是否要在水平方向上翻转显示
+
+    	Sprite() = default;     ///< 默认构造函数
+
+		/**
+		 * @brief 通过纹理 ID 构造精灵
+		 * @param texture_id 已加载的纹理 ID
+		 * @param src_rect 源矩形区域
+		 * @param is_flipped 是否翻转，默认为假
+		 */
+		Sprite(entt::id_type texture_id,
+			   const engine::utils::Rect& src_rect,
+			   bool is_flipped = false)
+			   : texture_id_(texture_id),
+				 src_rect_(src_rect),
+				 is_flipped_(is_flipped) {}
+
+		/**
+		 * @brief 通过纹理路径构造精灵
+		 * @param texture_path 纹理图片文件的相对路径
+		 * @param src_rect 源矩形区域
+		 * @param is_flipped 是否翻转，默认为假
+		 */
+		Sprite(const std::string& texture_path,
+			   const engine::utils::Rect& src_rect,
+			   bool is_flipped = false)
+			   : texture_id_(entt::hashed_string::value(texture_path.c_str())),
+				 texture_path_(texture_path),
+				 src_rect_(src_rect),
+				 is_flipped_(is_flipped) {}
+	};
 
 	/**
-	 * @class SpriteComponent
-	 * @brief 精灵组件类，负责处理游戏对象的 2D 图像渲染。
+	 * @struct SpriteComponent
+	 * @brief 精灵组件（ECS 组件）
 	 * 
-	 * 该组件封装了 Sprite 对象，并提供对齐、偏移和可见性控制。
-	 * 它与 TransformComponent 配合使用，以确定渲染位置。
+	 * 挂载到实体上，用于渲染系统识别并绘制精灵。
+	 * 包含精灵数据、渲染偏移和渲染大小。
 	 */
-	class SpriteComponent final : public Component {
-		friend class engine::object::GameObject;
-	private:
-		engine::resource::ResourceManager* resource_manager_ = nullptr;         ///< @brief 保存资源管理器指针，用于获取纹理大小
-		TransformComponent* transform_ = nullptr;                               ///< @brief 缓存 TransformComponent 指针（非必须）
+	struct SpriteComponent {
+		Sprite sprite_;                     ///< 基础精灵数据
+		glm::vec2 offset_{ 0.0f, 0.0f };    ///< 渲染位置偏移（相对于 TransformComponent 的位置）
+		glm::vec2 size_{ 0.0f, 0.0f };      ///< 渲染目标大小
 
-		engine::render::Sprite sprite_;                                         ///< @brief 精灵对象
-		engine::utils::Alignment alignment_ = engine::utils::Alignment::NONE;   ///< @brief 对齐方式
-		glm::vec2 sprite_size_ = { 0.0f, 0.0f };                                  ///< @brief 精灵尺寸
-		glm::vec2 offset_ = { 0.0f, 0.0f };                                       ///< @brief 偏移量
-		bool is_hidden_ = false;                                                ///< @brief 是否隐藏
-	public:
-		/**
-		 * @brief 构造一个新的 SpriteComponent。
-		 * @param texture_id 纹理资源的唯一标识符。
-		 * @param resource_manager 资源管理器引用，用于加载和查询纹理。
-		 * @param alignment 精灵相对于变换位置的对齐方式，默认为 NONE。
-		 * @param source_rect_opt 可选的源矩形，用于指定渲染纹理的特定区域（如精灵图帧）。
-		 * @param is_flipped 是否水平翻转精灵。
-		 */
-		SpriteComponent(
-			engine::resource::ResourceId texture_id,
-			engine::resource::ResourceManager& resource_manager,
-			engine::utils::Alignment alignment = engine::utils::Alignment::NONE,
-			std::optional<SDL_FRect> source_rect_opt = std::nullopt,
-			bool is_flipped = false
-		);
-		SpriteComponent(
-			const std::string& texture_id,
-			engine::resource::ResourceManager& resource_manager,
-			engine::utils::Alignment alignment = engine::utils::Alignment::NONE,
-			std::optional<SDL_FRect> source_rect_opt = std::nullopt,
-			bool is_flipped = false
-		);
-		SpriteComponent(
-			engine::render::Sprite&& sprite,
-			engine::resource::ResourceManager& resource_manager,
-			engine::utils::Alignment alignment = engine::utils::Alignment::NONE
-		);
-		~SpriteComponent() = default;
-
-		// 禁止拷贝和移动语义
-		SpriteComponent(const SpriteComponent&) = delete;
-		SpriteComponent& operator=(const SpriteComponent&) = delete;
-		SpriteComponent(SpriteComponent&&) = delete;
-		SpriteComponent& operator=(SpriteComponent&&) = delete;
-		
-		/**
-		 * @brief 根据当前的对齐方式和精灵尺寸更新偏移量。
-		 */
-		void updateOffset();
-
-		// Getters
-		const engine::render::Sprite& getSprite() const { return sprite_; }         ///< @brief 获取精灵对象
-		engine::resource::ResourceId getTextureId() const { return sprite_.getTextureId(); }  ///< @brief 获取纹理ID
-		bool isFlipped() const { return sprite_.getIsFlipped(); }                      ///< @brief 获取是否翻转
-		bool isHidden() const { return is_hidden_; }                        ///< @brief 获取是否隐藏
-		const glm::vec2& getSpriteSize() const { return sprite_size_; }             ///< @brief 获取精灵尺寸
-		const glm::vec2& getOffset() const { return offset_; }                      ///< @brief 获取偏移量
-		engine::utils::Alignment getAlignment() const { return alignment_; }        ///< @brief 获取对齐方式
-
-		// Setters
-		/**
-		 * @brief 通过纹理 ID 更改精灵的纹理。
-		 * @param texture_id 新的纹理 ID。
-		 * @param source_rect_opt 新的可选源矩形。
-		 */
-		void setSpriteById(engine::resource::ResourceId texture_id, const std::optional<SDL_FRect>& source_rect_opt = std::nullopt);
-		void setSpriteById(const std::string& texture_id, const std::optional<SDL_FRect>& source_rect_opt = std::nullopt);
-		
-		void setFlipped(bool flipped) { sprite_.setIsFlipped(flipped); }           ///< @brief 设置是否翻转
-		void setHidden(bool hidden) { is_hidden_ = hidden; }                       ///< @brief 设置是否隐藏
-		
-		/**
-		 * @brief 设置精灵的源矩形。
-		 * @param source_rect_opt 源矩形，为 std::nullopt 时渲染整个纹理。
-		 */
-		void setSourceRect(const std::optional<SDL_FRect>& source_rect_opt);
-		
-		/**
-		 * @brief 设置精灵的对齐方式并更新偏移。
-		 * @param anchor 新的对齐锚点。
-		 */
-		void setAlignment(engine::utils::Alignment anchor);
-
-	private:
-		/**
-		 * @brief 更新精灵的逻辑尺寸属性。
-		 */
-		void updateSpriteSize();
+		SpriteComponent() = default;
 
 		/**
-		 * @brief 初始化组件，获取所需的其他组件引用。
+		 * @brief 通过精灵数据构造组件（自动提取大小）
+		 * @param sprite 基础精灵数据
 		 */
-		void init() override;
+		SpriteComponent(Sprite sprite)
+			: sprite_(std::move(sprite)) {
+			size_ = { sprite_.src_rect_.size.x, sprite_.src_rect_.size.y };
+		}
 
 		/**
-		 * @brief 每帧更新逻辑。
-		 * @param deltaTime 每帧的时间间隔。
-		 * @param context 引擎上下文环境。
+		 * @brief 构造函数
+		 * @param sprite 基础精灵数据
+		 * @param size 初始渲染大小
+		 * @param offset 初始渲染偏移
 		 */
-		void update(float deltaTime, engine::core::Context& context) override;
-
-		/**
-		 * @brief 执行渲染操作。
-		 * @param context 引擎上下文环境。
-		 */
-		void render(engine::core::Context& context) override;
+		SpriteComponent(Sprite sprite, glm::vec2 size, glm::vec2 offset = { 0.0f, 0.0f })
+			: sprite_(std::move(sprite)), size_(size), offset_(offset) {}
 	};
 }

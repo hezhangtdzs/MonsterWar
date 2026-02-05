@@ -26,10 +26,10 @@ NormalState::NormalState(engine::ui::UIInteractive* owner)
  */
 void NormalState::enter() {
     if (auto interactive = dynamic_cast<engine::ui::UIInteractive*>(owner_)) {
-        // 切换到正常状态的精灵
-        auto normal_sprite = interactive->getSprite(engine::resource::typeId<NormalState>());
-        if (normal_sprite) {
-            interactive->setCurrentSprite(normal_sprite);
+        // 切换到正常状态的图片
+        auto normal_image = interactive->getImage(engine::resource::typeId<NormalState>());
+        if (normal_image) {
+            interactive->setCurrentImage(normal_image);
         }
         // 可以在这里播放进入正常状态的音效
     }

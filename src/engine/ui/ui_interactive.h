@@ -9,7 +9,7 @@
 #include <unordered_map>
 #include <functional>
 #include <string_view>
-#include "../render/sprite.h"
+#include "../render/image.h"
 #include "./state/ui_state.h"
 #include <glm/glm.hpp>
 #include "../resource/resource_id.h"
@@ -36,9 +36,9 @@ namespace engine::ui {
      */
     class UIInteractive  : public UIElement {
         std::unique_ptr<state::UIState> current_state_; ///< 当前状态
-        std::unordered_map<engine::resource::ResourceId, std::unique_ptr<engine::render::Sprite>> sprites_; ///< 精灵映射表
+        std::unordered_map<engine::resource::ResourceId, std::unique_ptr<engine::render::Image>> images_; ///< 精灵映射表
         std::unordered_map<engine::resource::ResourceId, engine::resource::ResourceId> sound_; ///< 声音映射表
-        engine::render::Sprite* current_sprite_ = nullptr; ///< 当前显示的精灵
+        engine::render::Image* current_image_ = nullptr; ///< 当前显示的精灵
         bool interactive_ = true; ///< 是否可交互
         std::function<void()> click_callback_; ///< 点击回调函数
 
@@ -88,27 +88,27 @@ namespace engine::ui {
          * @param name 精灵名称。
          * @param sprite 精灵实例。
          */
-        void addSprite(engine::resource::ResourceId name, std::unique_ptr<engine::render::Sprite> sprite);
-        void addSprite(std::string_view name, std::unique_ptr<engine::render::Sprite> sprite);
+        void addImage(engine::resource::ResourceId name, std::unique_ptr<engine::render::Image> image);
+        void addImage(std::string_view name, std::unique_ptr<engine::render::Image> image);
         
         /**
          * @brief 获取精灵。
          * @param name 精灵名称。
          * @return 精灵指针，如果不存在则返回nullptr。
          */
-        engine::render::Sprite* getSprite(engine::resource::ResourceId name) const;
-        engine::render::Sprite* getSprite(std::string_view name) const;
+        engine::render::Image* getImage(engine::resource::ResourceId name) const;
+        engine::render::Image* getImage(std::string_view name) const;
         
         /**
-         * @brief 设置当前显示的精灵。
-         * @param sprite 精灵指针。
+         * @brief 设置当前显示的图片。
+         * @param image 图片指针。
          */
-        void setCurrentSprite(engine::render::Sprite* sprite);
+        void setCurrentImage(engine::render::Image* image);
         
         /**
          * @brief 添加声音。
          * @param name 声音名称。
-         * @param sound_file 声音文件路径。
+         * @param sound_id 声音资源ID。
          */
         void addSound(engine::resource::ResourceId name, engine::resource::ResourceId sound_id);
         void addSound(engine::resource::ResourceId name, std::string_view sound_key_or_path);

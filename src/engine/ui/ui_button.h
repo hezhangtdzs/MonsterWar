@@ -8,7 +8,7 @@
 #include "ui_text.h"
 #include <functional>
 #include "../utils/math.h" // 用于FColor定义
-#include "../render/sprite.h"
+#include "../render/image.h"
 
 using namespace engine::utils;
 

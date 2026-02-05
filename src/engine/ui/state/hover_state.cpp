@@ -25,10 +25,10 @@ HoverState::HoverState(engine::ui::UIInteractive* owner)
  */
 void HoverState::enter() {
     if (auto interactive = dynamic_cast<engine::ui::UIInteractive*>(owner_)) {
-        // 切换到悬停状态的精灵
-        auto hover_sprite = interactive->getSprite(engine::resource::typeId<HoverState>());
-        if (hover_sprite) {
-            interactive->setCurrentSprite(hover_sprite);
+        // 切换到悬停状态的图片
+        auto hover_image = interactive->getImage(engine::resource::typeId<HoverState>());
+        if (hover_image) {
+            interactive->setCurrentImage(hover_image);
         }
 		
         

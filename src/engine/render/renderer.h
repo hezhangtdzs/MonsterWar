@@ -1,11 +1,14 @@
 #pragma once
-#include "sprite.h"
+#include "image.h"
 #include <glm/glm.hpp>
 #include "../utils/math.h"
 
 struct SDL_Renderer;
 namespace engine::resource {
 	class ResourceManager;
+}
+namespace engine::component {
+	struct Sprite;
 }
 
 namespace engine::render {
@@ -37,38 +40,19 @@ namespace engine::render {
 		 * @param camera 用于计算屏幕坐标的相机。
 		 * @param sprite 要绘制的精灵。
 		 * @param position 精灵的世界空间位置。
-		 * @param scale 缩放比例，默认为 {1.0f, 1.0f}。
+		 * @param size 精灵的绘制大小。
 		 * @param angle 旋转角度（度），默认为 0.0f。
 		 */
-		void drawSprite(const Camera& camera,
-						const Sprite& sprite, 
-						const glm::vec2& position, 
-						const glm::vec2& scale = { 1.0f, 1.0f }, 
-						double angle = 0.0f);
+		void drawSprite(const Camera& camera, const engine::component::Sprite& sprite, const glm::vec2& position, const glm::vec2& size, float angle = 0.0f);
+
 
 		/**
-		 * @brief 绘制具有视差滚动效果的精灵（通常用于背景）。
-		 * @param camera 当前相机视图。
-		 * @param sprite 要绘制的精灵背景。
-		 * @param position 初始位置。
-		 * @param scroll_factor 滚动因子（例如 0.5f 表示移动速度是相机的一半）。
-		 * @param repeat 是否在 X/Y 轴上重复平铺。
-		 * @param scale 缩放比例。
-		 */
-		void drawParallax(const Camera& camera,
-						  const Sprite& sprite, 
-						  const glm::vec2& position,
-						  const glm::vec2& scroll_factor,
-						  const glm::bvec2& repeat = { true, true },
-						  const glm::vec2& scale = { 1.0f, 1.0f });
-
-		/**
-		 * @brief 在屏幕空间（UI 层）中绘制一个精灵。
-		 * @param sprite 要绘制的精灵。
+		 * @brief 在屏幕空间（UI 层）中绘制一个图片。
+		 * @param image 要绘制的图片。
 		 * @param position 屏幕坐标位置。
-		 * @param size 可选的目标绘制大小，如果不提供则使用精灵原始大小。
+		 * @param size 可选的目标绘制大小，如果不提供则使用图片原始大小。
 		 */
-		void drawUISprite(const Sprite& sprite, 
+		void drawUIImage(const Image& image, 
 					  const glm::vec2& position, 
 					  const std::optional<glm::vec2>& size = std::nullopt);
 
@@ -119,7 +103,7 @@ namespace engine::render {
 		 * @param sprite 精灵对象。
 		 * @return std::optional<SDL_FRect> 源矩形，若无有效纹理则返回 nullopt。
 		 */
-		std::optional<SDL_FRect> getSpriteSrcRect(const Sprite& sprite);
+		std::optional<SDL_FRect> getImageSrcRect(const Image& image);
 
 		/**
 		 * @brief 检查一个矩形是否在相机的可见视口内。

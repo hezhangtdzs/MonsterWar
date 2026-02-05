@@ -1,80 +1,86 @@
 #pragma once
-/**
- * @file ui_image.h
- * @brief 定义UIImage类，用于在UI上显示图片。
- */
-
 #include "ui_element.h"
-#include "../render/sprite.h"
-#include "../resource/resource_id.h"
-
-namespace engine::core {
-    class Context;
-}
+#include "../render/image.h"
+#include <string_view>
+#include <optional>
+#include <SDL3/SDL_rect.h>
 
 namespace engine::ui {
 
 /**
- * @class UIImage
- * @brief UI图片类，用于在UI上显示图片。
- * 
- * UIImage类主要功能包括：
- * - 显示图片内容
- * - 支持设置图片位置和大小
- * - 支持设置透明度
+ * @brief 一个用于显示纹理或部分纹理的UI元素。
+ *
+ * 继承自UIElement并添加了渲染图像的功能。
  */
-class UIImage : public UIElement {
-private:
-    /// 精灵对象，用于存储纹理信息
-    engine::render::Sprite sprite_;
-    /// 图片透明度
-    float opacity_ = 1.0f;
+class UIImage final : public UIElement {
+protected:
+    engine::render::Image image_;
 
 public:
     /**
-     * @brief 构造函数。
-     * @param context 引擎上下文引用。
-     * @param texture_id 纹理ID。
-     * @param position 图片位置。
-     * @param size 图片大小（如果为0则使用纹理原始大小）。
+     * @brief 构造一个UIImage对象。（通过纹理路径构造）
+     *
+     * @param context 引擎上下文。
+     * @param texture_path 要显示的纹理路径。
+     * @param position 图像的局部位置。
+     * @param size 图像元素的大小。（如果为{0,0}，则使用纹理的原始尺寸）
+     * @param source_rect 可选：要绘制的纹理部分。（如果为空，则使用纹理的整个区域）
+     * @param is_flipped 可选：精灵是否应该水平翻转。
      */
-        UIImage(engine::core::Context& context, const std::string& texture_id, 
-           const glm::vec2& position = {0.0f, 0.0f}, 
-           const glm::vec2& size = {0.0f, 0.0f});
-
-        UIImage(engine::core::Context& context, engine::resource::ResourceId texture_id,
-            const glm::vec2& position = {0.0f, 0.0f},
-            const glm::vec2& size = {0.0f, 0.0f});
-
-    /**
-     * @brief 析构函数。
-     */
-    ~UIImage() override;
+    UIImage(engine::core::Context& context,
+            std::string_view texture_path,
+            glm::vec2 position = {0.0f, 0.0f},
+            glm::vec2 size = {0.0f, 0.0f},
+            std::optional<SDL_FRect> source_rect = std::nullopt,
+            bool is_flipped = false);
 
     /**
-     * @brief 渲染图片。
+     * @brief 构造一个UIImage对象。（通过纹理ID构造）
+     *
+     * @param context 引擎上下文。
+     * @param texture_id 要显示的纹理ID。
+     * @param position 图像的局部位置。
+     * @param size 图像元素的大小。（如果为{0,0}，则使用纹理的原始尺寸）
+     * @param source_rect 可选：要绘制的纹理部分。（如果为空，则使用纹理的整个区域）
+     * @param is_flipped 可选：精灵是否应该水平翻转。
+     * @note 用此方法，需确保对应ID的纹理已经加载到ResourceManager中，因此不需要再提供纹理路径。
      */
+    UIImage(engine::core::Context& context,
+            entt::id_type texture_id,
+            glm::vec2 position = {0.0f, 0.0f},
+            glm::vec2 size = {0.0f, 0.0f},
+            std::optional<SDL_FRect> source_rect = std::nullopt,
+            bool is_flipped = false);
+
+    /**
+     * @brief 构造一个UIImage对象。（通过Image对象构造）
+     *
+     * @param context 引擎上下文。
+     * @param image 要显示的Image对象。
+     * @param position 图像的局部位置。
+     * @param size 图像元素的大小。（如果为{0,0}，则使用纹理的原始尺寸）
+     */
+    UIImage(engine::core::Context& context,
+        engine::render::Image image,
+        glm::vec2 position = {0.0f, 0.0f},
+        glm::vec2 size = {0.0f, 0.0f});
+
+    // --- 核心方法 ---
     void render() override;
 
-    // Getters and Setters
-    /**
-     * @brief 获取透明度。
-     * @return 透明度值（0.0f-1.0f）。
-     */
-    float getOpacity() const { return opacity_; }
+    // --- Setters & Getters ---
+    const engine::render::Image& getImage() const { return image_; }
+    void setImage(engine::render::Image image) { image_ = std::move(image); }
 
-    /**
-     * @brief 设置透明度。
-     * @param opacity 透明度值（0.0f-1.0f）。
-     */
-    void setOpacity(float opacity) { opacity_ = opacity; }
+    std::string_view getTexturePath() const { return image_.getTexturePath(); }
+    entt::id_type getTextureId() const { return image_.getTextureId(); }
+    void setTexturePath(std::string_view texture_path) { image_.setTexturePath(texture_path); }
 
-    /**
-     * @brief 获取精灵对象。
-     * @return 精灵对象引用。
-     */
-    engine::render::Sprite& getSprite() { return sprite_; }
-    const engine::render::Sprite& getSprite() const { return sprite_; }
+    const std::optional<SDL_FRect>& getSourceRect() const { return image_.getSourceRect(); }
+    void setSourceRect(std::optional<SDL_FRect> source_rect) { image_.setSourceRect(std::move(source_rect)); }
+
+    bool isFlipped() const { return image_.getIsFlipped(); }
+    void setFlipped(bool flipped) { image_.setIsFlipped(flipped); }
 };
 
-}
+} // namespace engine::ui

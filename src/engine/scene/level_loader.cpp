@@ -244,7 +244,7 @@ namespace engine::scene {
     TileData LevelLoader::getTileDataByGid(int gid)
     {
         auto make_empty_data = []() {
-            return TileData{ engine::component::TileInfo(engine::render::Sprite(), engine::component::TileType::EMPTY), nullptr };
+            return TileData{ engine::component::TileInfo(engine::render::Image(), engine::component::TileType::EMPTY), nullptr };
         };
 
         // 清除GID的最高三位（翻转信息），得到原始GID值
@@ -285,7 +285,7 @@ namespace engine::scene {
                 static_cast<float>(tile_size_.y)
             };
             
-            engine::render::Sprite sprite{ texture_id, texture_rect };
+            engine::render::Image sprite{ texture_id, texture_rect };
             
             // 查找瓦片的特定 JSON 配置用于获取类型和碰撞框
             const nlohmann::json* tile_json = nullptr;
@@ -322,7 +322,7 @@ namespace engine::scene {
                                 static_cast<float>(tile_json.value("width", tile_json.value("imagewidth", 0))),    
                                 static_cast<float>(tile_json.value("height", tile_json.value("imageheight", 0)))
                             };
-                            return TileData{ engine::component::TileInfo(engine::render::Sprite{ texture_id, texture_rect }, getTileType(tile_json)), &tile_json };
+                            return TileData{ engine::component::TileInfo(engine::render::Image{ texture_id, texture_rect }, getTileType(tile_json)), &tile_json };
                         }
                     }
                 }

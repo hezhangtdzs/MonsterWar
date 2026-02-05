@@ -1,6 +1,6 @@
 #include "ui_manager.h"
 #include "../core/context.h"
-
+#include <spdlog/spdlog.h>
 namespace engine::ui {
 
 /**

@@ -35,16 +35,24 @@ FontManager::~FontManager()
  * @param point_size 字体的大小（磅值）。
  * @return 返回指向 TTF_Font 的裸指针。如果加载失败返回 nullptr。
  */
-TTF_Font* FontManager::loadFont(const std::string& file_path, int point_size)
+TTF_Font* FontManager::loadFont(ResourceId id, std::string_view file_path, int point_size)
 {
     // 检查点大小是否有效
     if (point_size <= 0) {
-        spdlog::error("无法加载字体 '{}'：无效的点大小 {}。", file_path, point_size);
+        spdlog::error("无法加载字体：无效的点大小 {} (id={})。", point_size, id);
         return nullptr;
     }
+	if (id == InvalidResourceId) {
+		spdlog::error("无法加载字体：资源ID无效");
+		return nullptr;
+	}
+	if (file_path.empty()) {
+		spdlog::error("无法加载字体：未提供文件路径 (id={})", id);
+		return nullptr;
+	}
 
     // 创建映射表的键
-    FontKey key = { file_path, point_size };
+    FontKey key = { id, point_size };
 
     // 首先检查缓存
     auto it = fonts_.find(key);
@@ -53,16 +61,16 @@ TTF_Font* FontManager::loadFont(const std::string& file_path, int point_size)
     }
 
     // 缓存中不存在，则加载字体
-    spdlog::debug("正在加载字体：{} ({}pt)", file_path, point_size);
-    TTF_Font* raw_font = TTF_OpenFont(file_path.c_str(), static_cast<float>(point_size));
+    spdlog::debug("正在加载字体：{} ({}pt, id={})", file_path, point_size, id);
+    TTF_Font* raw_font = TTF_OpenFont(std::string(file_path).c_str(), static_cast<float>(point_size));
     if (!raw_font) {
-        spdlog::error("加载字体 '{}' ({}pt) 失败：{}", file_path, point_size, SDL_GetError());
+        spdlog::error("加载字体 '{}' ({}pt, id={}) 失败：{}", file_path, point_size, id, SDL_GetError());
         return nullptr;
     }
 
     // 使用 unique_ptr 存储到缓存中
     fonts_.emplace(key, std::unique_ptr<TTF_Font, SDLFontDeleter>(raw_font));
-    spdlog::debug("成功加载并缓存字体：{} ({}pt)", file_path, point_size);
+    spdlog::debug("成功加载并缓存字体：{} ({}pt, id={})", file_path, point_size, id);
     return raw_font;
 }
 
@@ -72,16 +80,21 @@ TTF_Font* FontManager::loadFont(const std::string& file_path, int point_size)
  * @param point_size 字体的大小。
  * @return 返回对应的 TTF_Font 指针。如果加载失败返回 nullptr。
  */
-TTF_Font* FontManager::getFont(const std::string& file_path, int point_size)
+TTF_Font* FontManager::getFont(ResourceId id, std::string_view file_path, int point_size)
 {
-    FontKey key = { file_path, point_size };
+    FontKey key = { id, point_size };
     auto it = fonts_.find(key);
     if (it != fonts_.end()) {
         return it->second.get();
     }
 
-    spdlog::warn("字体 '{}' ({}pt) 不在缓存中，尝试加载。", file_path, point_size);
-    return loadFont(file_path, point_size);
+    if (file_path.empty()) {
+        spdlog::warn("字体未缓存且未提供路径 (id={}, {}pt)", id, point_size);
+        return nullptr;
+    }
+
+    spdlog::warn("字体 '{}' ({}pt, id={}) 不在缓存中，尝试加载。", file_path, point_size, id);
+    return loadFont(id, file_path, point_size);
 }
 
 /**
@@ -89,17 +102,32 @@ TTF_Font* FontManager::getFont(const std::string& file_path, int point_size)
  * @param file_path 字体文件的路径。
  * @param point_size 字体的大小。
  */
-void FontManager::unloadFont(const std::string& file_path, int point_size)
+void FontManager::unloadFont(ResourceId id, int point_size)
 {
-    FontKey key = { file_path, point_size };
+    FontKey key = { id, point_size };
     auto it = fonts_.find(key);
     if (it != fonts_.end()) {
-        spdlog::debug("卸载字体：{} ({}pt)", file_path, point_size);
+        spdlog::debug("卸载字体：id={} ({}pt)", id, point_size);
         fonts_.erase(it);       // unique_ptr 会处理 TTF_CloseFont
     }
     else {
-        spdlog::warn("尝试卸载不存在的字体：{} ({}pt)", file_path, point_size);
+        spdlog::warn("尝试卸载不存在的字体：id={} ({}pt)", id, point_size);
     }
+}
+
+TTF_Font* FontManager::loadFont(const std::string& file_path, int point_size)
+{
+    return loadFont(toResourceId(file_path), file_path, point_size);
+}
+
+TTF_Font* FontManager::getFont(const std::string& file_path, int point_size)
+{
+    return getFont(toResourceId(file_path), file_path, point_size);
+}
+
+void FontManager::unloadFont(const std::string& file_path, int point_size)
+{
+    unloadFont(toResourceId(file_path), point_size);
 }
 
 /**

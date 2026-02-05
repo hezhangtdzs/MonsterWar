@@ -9,6 +9,7 @@
 #include <glm/glm.hpp>
 #include "../utils/math.h" // 用于FColor定义
 #include "../../engine/interface/observer.h"
+#include "../resource/resource_id.h"
 
 using namespace engine::utils;
 
@@ -42,8 +43,10 @@ class UIText : public UIElement, public engine::interface::Observer {
 private:
     /// 文本内容
     std::string text_;
-    /// 字体路径
+    /// 字体路径（可选，用于懒加载/调试）
     std::string font_path_;
+    /// 字体资源ID
+    engine::resource::ResourceId font_id_{ engine::resource::InvalidResourceId };
     /// 字体大小
     int font_size_ = 16;
     /// 文本颜色
@@ -63,6 +66,8 @@ public:
      * @param font_size 字体大小。
      */
     UIText(engine::core::Context& context, const std::string& text, const std::string& font_path, int font_size = 16);
+
+    UIText(engine::core::Context& context, const std::string& text, engine::resource::ResourceId font_id, int font_size = 16);
 
     /**
      * @brief 析构函数。
@@ -108,6 +113,15 @@ public:
      */
     void setFontPath(const std::string& font_path) { 
         font_path_ = font_path; 
+        font_id_ = engine::resource::toResourceId(font_path);
+        is_dirty_ = true;
+    }
+
+    engine::resource::ResourceId getFontId() const { return font_id_; }
+
+    void setFontId(engine::resource::ResourceId font_id) {
+        font_id_ = font_id;
+        font_path_.clear();
         is_dirty_ = true;
     }
 

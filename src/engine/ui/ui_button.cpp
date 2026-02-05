@@ -3,6 +3,9 @@
 #include "../input/input_manager.h"
 #include "../render/sprite.h"
 #include "state/normal_state.h"
+#include "state/hover_state.h"
+#include "state/pressed_state.h"
+#include "../resource/resource_id.h"
 #include <glm/glm.hpp>
 
 namespace engine::ui {
@@ -24,8 +27,10 @@ UIButton::UIButton(engine::core::Context& context, const std::string& text, cons
     
     // 设置文本元素的位置居中对齐
     text_element->setAlignment(TextAlignment::CENTER);
-    addSound("hover", "assets/audio/button_hover.wav");
-    addSound("pressed", "assets/audio/button_click.wav");
+    addSound(static_cast<engine::resource::ResourceId>(engine::resource::typeId<state::HoverState>()),
+             static_cast<engine::resource::ResourceId>(engine::resource::toResourceId("ui_hover")));
+    addSound(static_cast<engine::resource::ResourceId>(engine::resource::typeId<state::PressedState>()),
+             static_cast<engine::resource::ResourceId>(engine::resource::toResourceId("ui_click")));
     // 添加文本元素作为子元素
     addChild(std::move(text_element));
     
@@ -63,17 +68,19 @@ UIButton::UIButton(
     auto hover_sprite = std::make_unique<render::Sprite>(hover_sprite_path);
     auto pressed_sprite = std::make_unique<render::Sprite>(pressed_sprite_path);
     
-    addSprite("normal", std::move(normal_sprite));
-    addSprite("hover", std::move(hover_sprite));
-    addSprite("pressed", std::move(pressed_sprite));
-    addSound("hover", "assets/audio/button_hover.wav");
-    addSound("pressed", "assets/audio/button_click.wav");
+    addSprite(engine::resource::typeId<state::NormalState>(), std::move(normal_sprite));
+    addSprite(engine::resource::typeId<state::HoverState>(), std::move(hover_sprite));
+    addSprite(engine::resource::typeId<state::PressedState>(), std::move(pressed_sprite));
+    addSound(static_cast<engine::resource::ResourceId>(engine::resource::typeId<state::HoverState>()),
+             static_cast<engine::resource::ResourceId>(engine::resource::toResourceId("ui_hover")));
+    addSound(static_cast<engine::resource::ResourceId>(engine::resource::typeId<state::PressedState>()),
+             static_cast<engine::resource::ResourceId>(engine::resource::toResourceId("ui_click")));
     // 设置按钮大小
     if (size.x > 0 && size.y > 0) {
         setSize(size);
     } else {
         // 如果没有指定大小，使用精灵大小
-        auto normal_sprite_ptr = getSprite("normal");
+        auto normal_sprite_ptr = getSprite(engine::resource::typeId<state::NormalState>());
         if (normal_sprite_ptr) {
             // 这里需要获取精灵的大小，假设Sprite类有getSize方法
             // setSize(normal_sprite_ptr->getSize());

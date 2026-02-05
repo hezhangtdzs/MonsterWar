@@ -1,3 +1,8 @@
+/**
+ * @file observer.cpp
+ * @brief Observer 类的实现，观察者模式中的观察者基类。
+ */
+
 #include "observer.h"
 #include "subject.h"
 #include <algorithm>

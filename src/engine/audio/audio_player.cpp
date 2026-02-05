@@ -72,6 +72,11 @@ namespace engine::audio {
 		return 0;
 	}
 
+	int AudioPlayer::playSound(engine::resource::ResourceId id, std::string_view file_path) {
+		resource_manager_.playSound(id, file_path);
+		return 0;
+	}
+
 	/**
 	 * @brief 播放空间化音效。
 	 * @param path 音效文件路径
@@ -109,6 +114,29 @@ namespace engine::audio {
 		return 0;
 	}
 
+	int AudioPlayer::playSoundSpatial(engine::resource::ResourceId id, std::string_view file_path, const glm::vec2& emitter_world_pos, const glm::vec2& listener_world_pos, float max_distance) {
+		if (max_distance <= 0.0f) {
+			return playSound(id, file_path);
+		}
+
+		const glm::vec2 delta = emitter_world_pos - listener_world_pos;
+		const float dist2 = (delta.x * delta.x) + (delta.y * delta.y);
+		const float max2 = max_distance * max_distance;
+		if (dist2 > max2) {
+			return 0;
+		}
+
+		const float dist = std::sqrt(dist2);
+		const float t = 1.0f - (dist / max_distance);
+		const float gain = std::clamp(t, 0.0f, 1.0f);
+
+		const float base_gain = master_volume_ * sound_volume_;
+		resource_manager_.setSoundGain(base_gain * gain);
+		resource_manager_.playSound(id, file_path);
+		resource_manager_.setSoundGain(base_gain);
+		return 0;
+	}
+
 	/**
 	 * @brief 播放背景音乐。
 	 * @param path 音乐文件路径
@@ -118,7 +146,17 @@ namespace engine::audio {
 	bool AudioPlayer::playMusic(const std::string& path, int loops) {
 		(void)loops;
 		current_music_ = path;
+		current_music_id_ = engine::resource::InvalidResourceId;
 		resource_manager_.playMusic(path);
+		resource_manager_.setMusicGain(master_volume_ * music_volume_);
+		return true;
+	}
+
+	bool AudioPlayer::playMusic(engine::resource::ResourceId id, std::string_view file_path, int loops) {
+		(void)loops;
+		current_music_.clear();
+		current_music_id_ = id;
+		resource_manager_.playMusic(id, file_path);
 		resource_manager_.setMusicGain(master_volume_ * music_volume_);
 		return true;
 	}
@@ -129,5 +167,6 @@ namespace engine::audio {
 	void AudioPlayer::stopMusic() {
 		resource_manager_.stopMusic();
 		current_music_.clear();
+		current_music_id_ = engine::resource::InvalidResourceId;
 	}
 }

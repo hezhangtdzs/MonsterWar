@@ -1,6 +1,6 @@
 # Audio 音频模块
 
-Audio 模块实现了服务定位器模式，提供全局音频播放功能，支持音效、音乐和 3D 空间化音频。
+Audio 模块实现了服务定位器模式，提供全局音频播放功能，支持音效、音乐和 3D 空间化音频。支持使用 ResourceId 进行高效的音频资源标识。
 
 ## 架构概览
 
@@ -16,6 +16,7 @@ graph TB
     AudioPlayer --> Config[Config<br/>配置]
     
     AudioComponent[AudioComponent] --> AudioLocator
+    ResourceId[ResourceId<br/>资源标识] --> AudioPlayer
 ```
 
 ## 类概览
@@ -23,9 +24,9 @@ graph TB
 | 类名 | 描述 |
 |------|------|
 | [AudioLocator](#audiolocator) | 音频服务定位器，提供全局访问 |
-| [IAudioPlayer](#iaudioplayer) | 音频播放器接口 |
-| [AudioPlayer](#audioplayer) | 音频播放器实现 |
-| [NullAudioPlayer](#nullaudioplayer) | 空音频播放器（默认实现）|
+| [IAudioPlayer](#iaudioplayer) | 音频播放器接口，支持 ResourceId |
+| [AudioPlayer](#audioplayer) | 音频播放器实现，支持 ResourceId |
+| [NullAudioPlayer](#nullaudioplayer) | 空音频播放器（默认实现），支持 ResourceId |
 
 ---
 
@@ -65,6 +66,10 @@ engine::audio::AudioLocator::provide(audio_player.get());
 engine::audio::AudioLocator::get().playSound("assets/jump.wav");
 engine::audio::AudioLocator::get().playMusic("assets/bgm.mp3");
 
+// 使用 ResourceId 播放
+using namespace entt::literals;
+engine::audio::AudioLocator::get().playSound("assets/jump.wav"_hs);
+
 // 取消注册（恢复空服务）
 engine::audio::AudioLocator::provide(nullptr);
 ```
@@ -75,7 +80,7 @@ engine::audio::AudioLocator::provide(nullptr);
 
 **文件**: `src/engine/audio/iaudio_player.h`
 
-音频播放器接口，定义了音频播放和管理的核心方法。
+音频播放器接口，定义了音频播放和管理的核心方法。支持使用 ResourceId 进行音频资源标识。
 
 ### 类定义
 
@@ -93,15 +98,30 @@ public:
     virtual float getSoundVolume() const = 0;
     virtual float getMusicVolume() const = 0;
     
-    // 音效播放
+    // 音效播放（字符串路径）
     virtual int playSound(const std::string& path) = 0;
     virtual int playSoundSpatial(const std::string& path, 
                                   const glm::vec2& emitter_world_pos, 
                                   const glm::vec2& listener_world_pos, 
                                   float max_distance) = 0;
     
-    // 音乐播放
+    // 音效播放（ResourceId）
+    virtual int playSound(engine::resource::ResourceId id, 
+                          std::string_view file_path = {}) = 0;
+    virtual int playSoundSpatial(engine::resource::ResourceId id, 
+                                  std::string_view file_path,
+                                  const glm::vec2& emitter_world_pos, 
+                                  const glm::vec2& listener_world_pos, 
+                                  float max_distance) = 0;
+    
+    // 音乐播放（字符串路径）
     virtual bool playMusic(const std::string& path, int loops = -1) = 0;
+    
+    // 音乐播放（ResourceId）
+    virtual bool playMusic(engine::resource::ResourceId id, 
+                           std::string_view file_path = {}, 
+                           int loops = -1) = 0;
+    
     virtual void stopMusic() = 0;
 };
 ```
@@ -126,7 +146,7 @@ graph TB
 
 **文件**: `src/engine/audio/audio_player.h`
 
-音频播放器类，负责游戏中的音效和音乐播放。
+音频播放器类，负责游戏中的音效和音乐播放。支持使用 ResourceId 进行高效的音频资源标识。
 
 ### 类定义
 
@@ -146,20 +166,44 @@ public:
     void setMasterVolume(float volume) override;
     void setSoundVolume(float volume) override;
     void setMusicVolume(float volume) override;
-    float getMasterVolume() const override;
-    float getSoundVolume() const override;
-    float getMusicVolume() const override;
+    float getMasterVolume() const override { return master_volume_; }
+    float getSoundVolume() const override { return sound_volume_; }
+    float getMusicVolume() const override { return music_volume_; }
     
-    // 音效播放
+    // 音效播放（字符串路径）
     int playSound(const std::string& path) override;
     int playSoundSpatial(const std::string& path, 
                          const glm::vec2& emitter_world_pos, 
                          const glm::vec2& listener_world_pos, 
                          float max_distance) override;
     
-    // 音乐播放
+    // 音效播放（ResourceId）
+    int playSound(engine::resource::ResourceId id, 
+                  std::string_view file_path = {}) override;
+    int playSoundSpatial(engine::resource::ResourceId id, 
+                         std::string_view file_path,
+                         const glm::vec2& emitter_world_pos, 
+                         const glm::vec2& listener_world_pos, 
+                         float max_distance) override;
+    
+    // 音乐播放（字符串路径）
     bool playMusic(const std::string& path, int loops = -1) override;
+    
+    // 音乐播放（ResourceId）
+    bool playMusic(engine::resource::ResourceId id, 
+                   std::string_view file_path = {}, 
+                   int loops = -1) override;
+    
     void stopMusic() override;
+
+private:
+    engine::resource::ResourceManager& resource_manager_;
+    engine::core::Config& config_;
+    float master_volume_{ 1.0f };
+    float sound_volume_{ 1.0f };
+    float music_volume_{ 1.0f };
+    std::string current_music_;
+    engine::resource::ResourceId current_music_id_{ engine::resource::InvalidResourceId };
 };
 ```
 
@@ -180,8 +224,15 @@ public:
 ### 使用示例
 
 ```cpp
+using namespace entt::literals;
+
 // 基本音效播放
 AudioLocator::get().playSound("assets/jump.wav");
+
+// 使用 ResourceId 播放音效
+ResourceId jump_id = engine::resource::toResourceId("assets/jump.wav");
+AudioLocator::get().playSound(jump_id);
+AudioLocator::get().playSound(jump_id, "assets/jump.wav");  // 带备用路径
 
 // 空间化音效
 AudioLocator::get().playSoundSpatial(
@@ -191,8 +242,21 @@ AudioLocator::get().playSoundSpatial(
     1000.0f                       // 最大距离
 );
 
+// 使用 ResourceId 空间化音效
+AudioLocator::get().playSoundSpatial(
+    explosion_id,
+    "assets/explosion.wav",
+    glm::vec2(500.0f, 300.0f),
+    player_position,
+    1000.0f
+);
+
 // 播放背景音乐（循环）
 AudioLocator::get().playMusic("assets/bgm.mp3", -1);
+
+// 使用 ResourceId 播放音乐
+ResourceId bgm_id = engine::resource::toResourceId("assets/bgm.mp3");
+AudioLocator::get().playMusic(bgm_id, {}, -1);
 
 // 停止音乐
 AudioLocator::get().stopMusic();
@@ -224,6 +288,7 @@ public:
     float getSoundVolume() const override { return 0.0f; }
     float getMusicVolume() const override { return 0.0f; }
 
+    // 字符串路径版本
     int playSound(const std::string& /*path*/) override { return -1; }
     int playSoundSpatial(const std::string& /*path*/, 
                          const glm::vec2& /*emitter_world_pos*/, 
@@ -231,6 +296,18 @@ public:
                          float /*max_distance*/) override { return -1; }
     bool playMusic(const std::string& /*path*/, int /*loops*/ = -1) override { return false; }
     void stopMusic() override {}
+
+    // ResourceId 版本
+    int playSound(engine::resource::ResourceId /*id*/, 
+                  std::string_view /*file_path*/ = {}) override { return -1; }
+    int playSoundSpatial(engine::resource::ResourceId /*id*/, 
+                         std::string_view /*file_path*/,
+                         const glm::vec2& /*emitter_world_pos*/, 
+                         const glm::vec2& /*listener_world_pos*/, 
+                         float /*max_distance*/) override { return -1; }
+    bool playMusic(engine::resource::ResourceId /*id*/, 
+                   std::string_view /*file_path*/ = {}, 
+                   int /*loops*/ = -1) override { return false; }
 };
 ```
 
@@ -264,12 +341,18 @@ sequenceDiagram
 ### AudioComponent 使用示例
 
 ```cpp
+using namespace entt::literals;
+
 // 为游戏对象添加音频组件
 auto audio = player->addComponent<AudioComponent>();
 
-// 注册音效
+// 注册音效（字符串路径）
 audio->registerSound("jump", "assets/jump.wav");
 audio->registerSound("attack", "assets/attack.wav");
+
+// 注册音效（ResourceId）
+ResourceId explosion_id = engine::resource::toResourceId("assets/explosion.wav");
+audio->registerSound("explosion", explosion_id);
 
 // 设置最小播放间隔（毫秒）
 audio->setMinIntervalMs(100);
@@ -282,6 +365,9 @@ audio->playSoundNearCamera("explosion", context, 500.0f);
 
 // 直接播放（绕过注册表）
 audio->playDirect("assets/special.wav");
+
+// 使用 ResourceId 直接播放
+audio->playDirect(explosion_id, "assets/explosion.wav");
 ```
 
 ---
@@ -296,18 +382,22 @@ graph TB
     
     AudioPlayer --> ResourceManager
     AudioPlayer --> Config
+    AudioPlayer --> ResourceId
     
     AudioComponent --> AudioLocator
     
     style AudioLocator fill:#f9f,stroke:#333,stroke-width:2px
     style IAudioPlayer fill:#bbf,stroke:#333,stroke-width:2px
     style AudioPlayer fill:#bbf,stroke:#333,stroke-width:2px
+    style ResourceId fill:#bfb,stroke:#333,stroke-width:2px
 ```
 
 ## 最佳实践
 
 1. **初始化时注册**: 在 GameApp 初始化时注册 AudioPlayer
 2. **使用定位器**: 通过 AudioLocator 全局访问，避免传递音频引用
-3. **音量控制**: 使用 Config 中的音量设置初始化 AudioPlayer
-4. **空间化音频**: 对于环境音效使用空间化播放，增强沉浸感
-5. **资源管理**: 音频资源通过 ResourceManager 统一管理
+3. **使用 ResourceId**: 对于频繁播放的音效，使用 ResourceId 可以提高性能
+4. **音量控制**: 使用 Config 中的音量设置初始化 AudioPlayer
+5. **空间化音频**: 对于环境音效使用空间化播放，增强沉浸感
+6. **资源管理**: 音频资源通过 ResourceManager 统一管理，支持 ResourceId 访问
+7. **备用路径**: 使用 ResourceId 播放时，可以提供备用文件路径用于懒加载

@@ -4,6 +4,7 @@
 #include "pressed_state.h"
 #include "../../core/context.h"
 #include "../../input/input_manager.h"
+#include "../../resource/resource_id.h"
 
 namespace engine::ui::state {
 
@@ -25,7 +26,7 @@ HoverState::HoverState(engine::ui::UIInteractive* owner)
 void HoverState::enter() {
     if (auto interactive = dynamic_cast<engine::ui::UIInteractive*>(owner_)) {
         // 切换到悬停状态的精灵
-        auto hover_sprite = interactive->getSprite("hover");
+        auto hover_sprite = interactive->getSprite(engine::resource::typeId<HoverState>());
         if (hover_sprite) {
             interactive->setCurrentSprite(hover_sprite);
         }

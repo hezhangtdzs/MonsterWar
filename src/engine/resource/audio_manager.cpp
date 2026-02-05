@@ -82,27 +82,36 @@ namespace engine::resource {
      * @return MIX_Audio* 指向加载后的音效资源的指针。如果加载失败会抛出异常。
      * @throws std::runtime_error 如果加载失败。
      */
-    MIX_Audio* AudioManager::loadSound(const std::string& file_path) {
-        // 1. 检查缓存
-        auto it = sounds_.find(file_path);
+    MIX_Audio* AudioManager::loadSound(ResourceId id, std::string_view file_path) {
+        if (id == InvalidResourceId) {
+            spdlog::error("加载音效失败：资源ID无效");
+            return nullptr;
+        }
+
+        auto it = sounds_.find(id);
         if (it != sounds_.end()) {
             return it->second.get();
         }
 
-        spdlog::debug("加载音效: {}", file_path);
+        if (file_path.empty()) {
+            spdlog::error("加载音效失败：未提供文件路径 (id={})", id);
+            return nullptr;
+        }
+
+        spdlog::debug("加载音效: {} (id={})", file_path, id);
 
         // 2. 加载音效
         // 音效通常较短，使用 predecode = true (预解码) 将 PCM 数据加载到内存中，
         // 以避免播放时的解码开销，保证低延迟。
-        MIX_Audio* raw_audio = MIX_LoadAudio(mixer_.get(), file_path.c_str(), true);
+        MIX_Audio* raw_audio = MIX_LoadAudio(mixer_.get(), std::string(file_path).c_str(), true);
 
         if (!raw_audio) {
-            throw std::runtime_error("加载音效失败: " + file_path + " 错误: " + std::string(SDL_GetError()));
+            throw std::runtime_error("加载音效失败: " + std::string(file_path) + " 错误: " + std::string(SDL_GetError()));
         }
 
         // 3. 存入缓存
-        sounds_.emplace(file_path, std::unique_ptr<MIX_Audio, MixAudioDeleter>(raw_audio));
-        spdlog::debug("成功加载并缓存音效: {}", file_path);
+        sounds_.emplace(id, std::unique_ptr<MIX_Audio, MixAudioDeleter>(raw_audio));
+        spdlog::debug("成功加载并缓存音效: {} (id={})", file_path, id);
         return raw_audio;
     }
 
@@ -111,14 +120,21 @@ namespace engine::resource {
      * @param file_path 音效文件的路径。
      * @return MIX_Audio* 音效资源指针。如果加载失败返回 nullptr。
      */
-    MIX_Audio* AudioManager::getSound(const std::string& file_path) {
-        auto it = sounds_.find(file_path);
+    MIX_Audio* AudioManager::getSound(ResourceId id, std::string_view file_path) {
+        if (id == InvalidResourceId) {
+            return nullptr;
+        }
+        auto it = sounds_.find(id);
         if (it != sounds_.end()) {
             return it->second.get();
         }
-        spdlog::warn("音效未缓存，尝试直接加载: {}", file_path);
+        if (file_path.empty()) {
+            spdlog::warn("音效未缓存且未提供路径 (id={})", id);
+            return nullptr;
+        }
+        spdlog::warn("音效未缓存，尝试直接加载: {} (id={})", file_path, id);
         try {
-            return loadSound(file_path);
+            return loadSound(id, file_path);
         } catch (const std::exception& e) {
             spdlog::error("加载音效失败: {}", e.what());
             return nullptr;
@@ -129,13 +145,13 @@ namespace engine::resource {
      * @brief 从缓存中卸载并释放指定的音效资源。
      * @param file_path 要卸载的音效文件路径。
      */
-    void AudioManager::unloadSound(const std::string& file_path) {
-        auto it = sounds_.find(file_path);
+    void AudioManager::unloadSound(ResourceId id) {
+        auto it = sounds_.find(id);
         if (it != sounds_.end()) {
-            spdlog::debug("卸载音效: {}", file_path);
+            spdlog::debug("卸载音效: id={}", id);
             sounds_.erase(it);
         } else {
-            spdlog::warn("尝试卸载未加载的音效: {}", file_path);
+            spdlog::warn("尝试卸载未加载的音效: id={}", id);
         }
     }
 
@@ -153,16 +169,16 @@ namespace engine::resource {
      * @brief 播放音效（即发即弃模式）。
      * @param file_path 音效文件路径。
      */
-    void AudioManager::playSound(const std::string& file_path) {
-		if (!sound_track_) return;
+    void AudioManager::playSound(ResourceId id, std::string_view file_path) {
+        if (!sound_track_) return;
 
-		MIX_Audio* audio = getSound(file_path);
-		if (!audio) return;
+        MIX_Audio* audio = getSound(id, file_path);
+        if (!audio) return;
 
-		MIX_SetTrackAudio(sound_track_.get(), audio);
-		if (!MIX_PlayTrack(sound_track_.get(), 0)) {
-			spdlog::error("播放音效失败: {} - {}", file_path, SDL_GetError());
-		}
+        MIX_SetTrackAudio(sound_track_.get(), audio);
+        if (!MIX_PlayTrack(sound_track_.get(), 0)) {
+            spdlog::error("播放音效失败: id={} - {}", id, SDL_GetError());
+        }
     }
 
     /**
@@ -182,24 +198,34 @@ namespace engine::resource {
      * @return MIX_Audio* 指向加载后的音乐资源的指针。如果加载失败会抛出异常。
      * @throws std::runtime_error 如果加载失败。
      */
-    MIX_Audio* AudioManager::loadMusic(const std::string& file_path) {
-        auto it = music_.find(file_path);
+    MIX_Audio* AudioManager::loadMusic(ResourceId id, std::string_view file_path) {
+        if (id == InvalidResourceId) {
+            spdlog::error("加载音乐失败：资源ID无效");
+            return nullptr;
+        }
+
+        auto it = music_.find(id);
         if (it != music_.end()) {
             return it->second.get();
         }
 
-        spdlog::debug("加载音乐: {}", file_path);
+        if (file_path.empty()) {
+            spdlog::error("加载音乐失败：未提供文件路径 (id={})", id);
+            return nullptr;
+        }
+
+        spdlog::debug("加载音乐: {} (id={})", file_path, id);
 
         // 2. 加载音乐
         // 关键优化：音乐文件通常较大（如 BGM），将 predecode 设置为 false。
         // 这样会保留源格式（如 mp3/ogg），在播放时流式解码，大幅减少内存占用。
-        MIX_Audio* raw_audio = MIX_LoadAudio(mixer_.get(), file_path.c_str(), false);
+        MIX_Audio* raw_audio = MIX_LoadAudio(mixer_.get(), std::string(file_path).c_str(), false);
 
         if (!raw_audio) {
-            throw std::runtime_error("加载音乐失败: " + file_path + " 错误: " + std::string(SDL_GetError()));
+            throw std::runtime_error("加载音乐失败: " + std::string(file_path) + " 错误: " + std::string(SDL_GetError()));
         }
 
-        music_.emplace(file_path, std::unique_ptr<MIX_Audio, MixAudioDeleter>(raw_audio));
+        music_.emplace(id, std::unique_ptr<MIX_Audio, MixAudioDeleter>(raw_audio));
         return raw_audio;
     }
 
@@ -208,14 +234,21 @@ namespace engine::resource {
      * @param file_path 音乐文件的路径。
      * @return MIX_Audio* 音乐资源指针。如果加载失败返回 nullptr。
      */
-    MIX_Audio* AudioManager::getMusic(const std::string& file_path) {
-        auto it = music_.find(file_path);
+    MIX_Audio* AudioManager::getMusic(ResourceId id, std::string_view file_path) {
+        if (id == InvalidResourceId) {
+            return nullptr;
+        }
+        auto it = music_.find(id);
         if (it != music_.end()) {
             return it->second.get();
         }
-        spdlog::warn("音乐未缓存，尝试直接加载: {}", file_path);
+        if (file_path.empty()) {
+            spdlog::warn("音乐未缓存且未提供路径 (id={})", id);
+            return nullptr;
+        }
+        spdlog::warn("音乐未缓存，尝试直接加载: {} (id={})", file_path, id);
         try {
-            return loadMusic(file_path);
+            return loadMusic(id, file_path);
         } catch (const std::exception& e) {
             spdlog::error("加载音乐失败: {}", e.what());
             return nullptr;
@@ -226,13 +259,13 @@ namespace engine::resource {
      * @brief 从缓存中卸载并释放指定的音乐资源。
      * @param file_path 要卸载的音乐文件路径。
      */
-    void AudioManager::unloadMusic(const std::string& file_path) {
-        auto it = music_.find(file_path);
+    void AudioManager::unloadMusic(ResourceId id) {
+        auto it = music_.find(id);
         if (it != music_.end()) {
-            spdlog::debug("卸载音乐: {}", file_path);
+            spdlog::debug("卸载音乐: id={}", id);
             music_.erase(it);
         } else {
-            spdlog::warn("尝试卸载未加载的音乐: {}", file_path);
+            spdlog::warn("尝试卸载未加载的音乐: id={}", id);
         }
     }
 
@@ -250,10 +283,10 @@ namespace engine::resource {
      * @brief 播放背景音乐（循环播放模式）。
      * @param file_path 音乐文件路径。
      */
-    void AudioManager::playMusic(const std::string& file_path) {
+    void AudioManager::playMusic(ResourceId id, std::string_view file_path) {
         if (!music_track_) return;
 
-        MIX_Audio* music = getMusic(file_path);
+        MIX_Audio* music = getMusic(id, file_path);
         if (music) {
             // 1. 设置到音乐轨道
             MIX_SetTrackAudio(music_track_.get(), music);
@@ -264,14 +297,45 @@ namespace engine::resource {
             
             // 3. 开始播放
             if (!MIX_PlayTrack(music_track_.get(), props)) {
-                spdlog::error("播放音乐失败: {} - {}", file_path, SDL_GetError());
+                spdlog::error("播放音乐失败: id={} - {}", id, SDL_GetError());
             }
-
             // 4. 清理属性
             SDL_DestroyProperties(props);
             
             spdlog::debug("正在播放音乐: {}", file_path);
         }
+    }
+
+    MIX_Audio* AudioManager::loadSound(const std::string& file_path) {
+        return loadSound(toResourceId(file_path), file_path);
+    }
+
+    MIX_Audio* AudioManager::getSound(const std::string& file_path) {
+        return getSound(toResourceId(file_path), file_path);
+    }
+
+    void AudioManager::unloadSound(const std::string& file_path) {
+        unloadSound(toResourceId(file_path));
+    }
+
+    void AudioManager::playSound(const std::string& file_path) {
+        playSound(toResourceId(file_path), file_path);
+    }
+
+    MIX_Audio* AudioManager::loadMusic(const std::string& file_path) {
+        return loadMusic(toResourceId(file_path), file_path);
+    }
+
+    MIX_Audio* AudioManager::getMusic(const std::string& file_path) {
+        return getMusic(toResourceId(file_path), file_path);
+    }
+
+    void AudioManager::unloadMusic(const std::string& file_path) {
+        unloadMusic(toResourceId(file_path));
+    }
+
+    void AudioManager::playMusic(const std::string& file_path) {
+        playMusic(toResourceId(file_path), file_path);
     }
 
     /**

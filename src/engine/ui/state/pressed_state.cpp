@@ -4,6 +4,7 @@
 #include "hover_state.h"
 #include "../../core/context.h"
 #include "../../input/input_manager.h"
+#include "../../resource/resource_id.h"
 
 namespace engine::ui::state {
 
@@ -26,12 +27,12 @@ PressedState::PressedState(engine::ui::UIInteractive* owner)
 void PressedState::enter() {
     if (auto interactive = dynamic_cast<engine::ui::UIInteractive*>(owner_)) {
         // 切换到按下状态的精灵
-        auto pressed_sprite = interactive->getSprite("pressed");
+        auto pressed_sprite = interactive->getSprite(engine::resource::typeId<PressedState>());
         if (pressed_sprite) {
             interactive->setCurrentSprite(pressed_sprite);
         }
         // 播放按下音效
-        interactive->playSound("pressed");
+        interactive->playSound(engine::resource::typeId<PressedState>());
     }
 }
 

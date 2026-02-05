@@ -4,6 +4,7 @@
 #include "../ui_element.h"
 #include "../../core/context.h"
 #include "../../input/input_manager.h"
+#include "../../resource/resource_id.h"
 
 namespace engine::ui::state {
 
@@ -26,7 +27,7 @@ NormalState::NormalState(engine::ui::UIInteractive* owner)
 void NormalState::enter() {
     if (auto interactive = dynamic_cast<engine::ui::UIInteractive*>(owner_)) {
         // 切换到正常状态的精灵
-        auto normal_sprite = interactive->getSprite("normal");
+        auto normal_sprite = interactive->getSprite(engine::resource::typeId<NormalState>());
         if (normal_sprite) {
             interactive->setCurrentSprite(normal_sprite);
         }
@@ -75,7 +76,7 @@ std::unique_ptr<UIState> NormalState::handleInput() {
         // 检查鼠标是否在按钮内
         if (interactive->containsPoint(mouse_pos)) {
             // 鼠标进入按钮，切换到悬停状态
-            interactive->playSound("hover");
+            interactive->playSound(engine::resource::typeId<HoverState>());
             return std::make_unique<HoverState>(interactive);
         }
     }

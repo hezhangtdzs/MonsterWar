@@ -127,7 +127,7 @@ state::UIState* UIInteractive::getCurrentState() const {
  * 
  * 如果是第一个精灵，会自动设置为当前精灵。
  */
-void UIInteractive::addSprite(const std::string& name, std::unique_ptr<engine::render::Sprite> sprite) {
+void UIInteractive::addSprite(engine::resource::ResourceId name, std::unique_ptr<engine::render::Sprite> sprite) {
     sprites_[name] = std::move(sprite);
     // 如果是第一个精灵，设置为当前精灵
     if (!current_sprite_) {
@@ -140,7 +140,7 @@ void UIInteractive::addSprite(const std::string& name, std::unique_ptr<engine::r
  * @param name 精灵名称。
  * @return 精灵指针，如果不存在则返回nullptr。
  */
-engine::render::Sprite* UIInteractive::getSprite(const std::string& name) const {
+engine::render::Sprite* UIInteractive::getSprite(engine::resource::ResourceId name) const {
     auto it = sprites_.find(name);
     if (it != sprites_.end()) {
         return it->second.get();
@@ -161,8 +161,12 @@ void UIInteractive::setCurrentSprite(engine::render::Sprite* sprite) {
  * @param name 声音名称。
  * @param sound_file 声音文件路径。
  */
-void UIInteractive::addSound(const std::string& name, const std::string& sound_file) {
-    sound_[name] = sound_file;
+void UIInteractive::addSound(engine::resource::ResourceId name, engine::resource::ResourceId sound_id) {
+    sound_[name] = sound_id;
+}
+
+void UIInteractive::addSound(engine::resource::ResourceId name, std::string_view sound_key_or_path) {
+    addSound(name, engine::resource::toResourceId(sound_key_or_path));
 }
 
 /**
@@ -170,23 +174,43 @@ void UIInteractive::addSound(const std::string& name, const std::string& sound_f
  * @param name 声音名称。
  * @return 声音文件路径，如果不存在则返回空字符串。
  */
-std::string UIInteractive::getSound(const std::string& name) const {
+engine::resource::ResourceId UIInteractive::getSound(engine::resource::ResourceId name) const {
     auto it = sound_.find(name);
     if (it != sound_.end()) {
         return it->second;
     }
-    return "";
+    return engine::resource::InvalidResourceId;
 }
 
 /**
  * @brief 播放声音。
  * @param name 声音名称。
  */
-void UIInteractive::playSound(const std::string& name) {
-    auto sound_file = getSound(name);
-    if (!sound_file.empty()) {
-        engine::audio::AudioLocator::get().playSound(sound_file);
+void UIInteractive::playSound(engine::resource::ResourceId name) {
+    const auto sound_id = getSound(name);
+    if (sound_id != engine::resource::InvalidResourceId) {
+        engine::audio::AudioLocator::get().playSound(sound_id);
     }
+}
+
+void UIInteractive::addSprite(std::string_view name, std::unique_ptr<engine::render::Sprite> sprite) {
+    addSprite(engine::resource::toResourceId(name), std::move(sprite));
+}
+
+engine::render::Sprite* UIInteractive::getSprite(std::string_view name) const {
+    return getSprite(engine::resource::toResourceId(name));
+}
+
+void UIInteractive::addSound(std::string_view name, std::string_view sound_key_or_path) {
+    addSound(engine::resource::toResourceId(name), engine::resource::toResourceId(sound_key_or_path));
+}
+
+engine::resource::ResourceId UIInteractive::getSound(std::string_view name) const {
+    return getSound(engine::resource::toResourceId(name));
+}
+
+void UIInteractive::playSound(std::string_view name) {
+    playSound(engine::resource::toResourceId(name));
 }
 
 /**

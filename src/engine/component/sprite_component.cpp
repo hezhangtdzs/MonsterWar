@@ -19,7 +19,7 @@ namespace engine::component {
      * @param is_flipped 是否水平翻转精灵。
      */
     SpriteComponent::SpriteComponent(
-                const std::string& texture_id,
+                engine::resource::ResourceId texture_id,
                 engine::resource::ResourceManager& resource_manager,
                 engine::utils::Alignment alignment,
                 std::optional<SDL_FRect> source_rect_opt,
@@ -34,6 +34,16 @@ namespace engine::component {
     }
     // offset_ 和 sprite_size_ 将在 init 中计算
     spdlog::trace("创建 SpriteComponent，纹理ID: {}", texture_id);
+}
+
+    SpriteComponent::SpriteComponent(
+                const std::string& texture_id,
+                engine::resource::ResourceManager& resource_manager,
+                engine::utils::Alignment alignment,
+                std::optional<SDL_FRect> source_rect_opt,
+                bool is_flipped)
+                : SpriteComponent(engine::resource::toResourceId(texture_id), resource_manager, alignment, source_rect_opt, is_flipped)
+{
 }
 
     /**
@@ -87,12 +97,17 @@ namespace engine::component {
      * 
      * 此方法会自动更新精灵尺寸和偏移量。
      */
-    void SpriteComponent::setSpriteById(const std::string &texture_id, const std::optional<SDL_FRect> &source_rect_opt)
+    void SpriteComponent::setSpriteById(engine::resource::ResourceId texture_id, const std::optional<SDL_FRect> &source_rect_opt)
     {
         sprite_.setTextureId(texture_id);
         sprite_.setSourceRect(source_rect_opt);
         updateSpriteSize();
         updateOffset();
+    }
+
+    void SpriteComponent::setSpriteById(const std::string &texture_id, const std::optional<SDL_FRect> &source_rect_opt)
+    {
+        setSpriteById(engine::resource::toResourceId(texture_id), source_rect_opt);
     }
 
     /**
@@ -134,7 +149,7 @@ namespace engine::component {
             sprite_size_.x = src_rect.w;
             sprite_size_.y = src_rect.h;
         } else {
-            sprite_size_ = resource_manager_->getTextureSize(sprite_.getTextureId());
+            sprite_size_ = resource_manager_->getTextureSize(sprite_.getTextureId(), sprite_.getTexturePath());
         }
     }
 

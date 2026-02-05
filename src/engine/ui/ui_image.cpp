@@ -30,6 +30,24 @@ UIImage::UIImage(engine::core::Context& context, const std::string& texture_id,
     spdlog::trace("UIImage 创建完成，纹理ID: {}", texture_id);
 }
 
+UIImage::UIImage(engine::core::Context& context, engine::resource::ResourceId texture_id,
+               const glm::vec2& position, const glm::vec2& size)
+    : UIElement(context), sprite_(texture_id) {
+
+    // 设置位置
+    setPosition(position);
+
+    // 设置大小
+    if (size.x > 0 && size.y > 0) {
+        setSize(size);
+    } else {
+        // 如果没有指定大小，使用默认大小
+        setSize({32.0f, 32.0f});
+    }
+
+    spdlog::trace("UIImage 创建完成，纹理ID: {}", texture_id);
+}
+
 /**
  * @brief 析构函数。
  */

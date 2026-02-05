@@ -7,11 +7,13 @@
 #include <memory>       // 用于 std::unique_ptr
 #include <stdexcept>    // 用于 std::runtime_error
 #include <string>       // 用于 std::string
+#include <string_view>
 #include <unordered_map> // 用于 std::unordered_map
 #include <utility>      // 用于 std::pair
 #include <functional>   // 用于 std::hash
 
 #include <SDL3_ttf/SDL_ttf.h> // SDL_ttf 主头文件
+#include "resource_id.h"
 
 namespace engine::resource {
 	/**
@@ -27,7 +29,7 @@ namespace engine::resource {
 		 * @brief 字体缓存映射的唯一键，结合了文件路径和字体磅值。
 		 */
 		struct FontKey {
-			std::string file_path; ///< 字体文件的相对或绝对磁盘路径
+			ResourceId id; ///< 字体资源ID
 			int point_size;        ///< 字体大小（点/磅值）
 
 			/**
@@ -36,7 +38,7 @@ namespace engine::resource {
 			 * @return true 如果路径和大小均相等，否则返回 false。
 			 */
 			bool operator==(const FontKey& other) const {
-				return file_path == other.file_path && point_size == other.point_size;
+				return id == other.id && point_size == other.point_size;
 			}
 		};
 
@@ -51,7 +53,7 @@ namespace engine::resource {
 			 * @return 生成的 size_t 类型哈希值。
 			 */
 			std::size_t operator()(const FontKey& key) const {
-				return std::hash<std::string>()(key.file_path) ^ std::hash<int>()(key.point_size);
+				return std::hash<ResourceId>()(key.id) ^ std::hash<int>()(key.point_size);
 			}
 		};
 
@@ -107,6 +109,7 @@ private:
 		 * @return 返回指向 TTF_Font 的裸指针。
 		 * @throws std::runtime_error 如果 TTF_OpenFont 失败。
 		 */
+		TTF_Font* loadFont(ResourceId id, std::string_view file_path, int point_size);
 		TTF_Font* loadFont(const std::string& file_path, int point_size);
 
 		/**
@@ -115,6 +118,7 @@ private:
 		 * @param point_size 字体的大小。
 		 * @return 返回对应的 TTF_Font 指针。
 		 */
+		TTF_Font* getFont(ResourceId id, std::string_view file_path, int point_size);
 		TTF_Font* getFont(const std::string& file_path, int point_size);
 
 		/**
@@ -122,6 +126,7 @@ private:
 		 * @param file_path 字体文件的路径。
 		 * @param point_size 字体的大小。
 		 */
+		void unloadFont(ResourceId id, int point_size);
 		void unloadFont(const std::string& file_path, int point_size);
 
 		/**

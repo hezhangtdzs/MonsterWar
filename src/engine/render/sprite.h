@@ -1,8 +1,10 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 #include <optional>
 #include <SDL3/SDL_rect.h>
+#include "../resource/resource_id.h"
 
 namespace engine::render {
 	/**
@@ -12,7 +14,10 @@ namespace engine::render {
 	class Sprite final {
 	private:
 		/** @brief 纹理在资源管理器中的唯一标识符 */
-		std::string texture_id_;
+		engine::resource::ResourceId texture_id_{ engine::resource::InvalidResourceId };
+
+		/** @brief 可选的纹理路径（用于懒加载或调试） */
+		std::optional<std::string> texture_path_;
 
 		/** @brief 纹理的源裁剪矩形。如果为 nullopt，则渲染整个纹理。 */
 		std::optional<SDL_FRect> source_rect_;
@@ -29,10 +34,18 @@ namespace engine::render {
 		 * @param is_flipped 是否水平翻转，默认为 false。
 		 */
 
-		explicit Sprite(const std::string& texture_id,
-						const std::optional<SDL_FRect>& source_rect = std::nullopt, 
+		explicit Sprite(engine::resource::ResourceId texture_id,
+						const std::optional<SDL_FRect>& source_rect = std::nullopt,
 						bool is_flipped = false)
 						: texture_id_(texture_id), source_rect_(source_rect), is_flipped_(is_flipped) {}
+
+		explicit Sprite(std::string_view texture_path,
+						const std::optional<SDL_FRect>& source_rect = std::nullopt,
+						bool is_flipped = false)
+						: texture_id_(engine::resource::toResourceId(texture_path)),
+						  texture_path_(std::string(texture_path)),
+						  source_rect_(source_rect),
+						  is_flipped_(is_flipped) {}
 
 		/** @brief 默认析构函数 */
 		~Sprite() = default;
@@ -43,7 +56,11 @@ namespace engine::render {
 		 * @brief 获取纹理的标识符。
 		 * @return 纹理 ID 的常量引用。
 		 */
-		[[nodiscard]] const std::string& getTextureId() const { return texture_id_; }
+		[[nodiscard]] engine::resource::ResourceId getTextureId() const { return texture_id_; }
+
+		[[nodiscard]] std::string_view getTexturePath() const {
+			return texture_path_.has_value() ? std::string_view(*texture_path_) : std::string_view{};
+		}
 
 		/**
 		 * @brief 获取纹理的源裁剪矩形。
@@ -63,7 +80,15 @@ namespace engine::render {
 		 * @brief 设置纹理的标识符。
 		 * @param texture_id 新的纹理 ID。
 		 */
-		void setTextureId(const std::string& texture_id) { texture_id_ = texture_id; }
+		void setTextureId(engine::resource::ResourceId texture_id) {
+			texture_id_ = texture_id;
+			texture_path_.reset();
+		}
+
+		void setTexturePath(std::string_view texture_path) {
+			texture_id_ = engine::resource::toResourceId(texture_path);
+			texture_path_ = std::string(texture_path);
+		}
 
 		/**
 		 * @brief 设置纹理的源裁剪矩形。

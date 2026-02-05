@@ -76,8 +76,18 @@ namespace engine::render {
                                int font_size,
                                const glm::vec2& position,
                                const engine::utils::FColor& color) {
+        drawText(camera, text, engine::resource::toResourceId(font_path), font_path, font_size, position, color);
+    }
+
+    void TextRenderer::drawText(const Camera& camera,
+                               const std::string& text,
+                               engine::resource::ResourceId font_id,
+                               std::string_view font_path,
+                               int font_size,
+                               const glm::vec2& position,
+                               const engine::utils::FColor& color) {
         // 获取字体
-        TTF_Font* font = resource_manager_->getFont(font_path, font_size);
+        TTF_Font* font = resource_manager_->getFont(font_id, font_path, font_size);
         if (!font) {
             return;
         }
@@ -116,11 +126,21 @@ namespace engine::render {
                                  const glm::vec2& position,
                                  const engine::utils::FColor& color,
                                  bool is_dirty) {
+        drawUIText(text, engine::resource::toResourceId(font_path), font_path, font_size, position, color, is_dirty);
+    }
+
+    void TextRenderer::drawUIText(const std::string& text,
+                                 engine::resource::ResourceId font_id,
+                                 std::string_view font_path,
+                                 int font_size,
+                                 const glm::vec2& position,
+                                 const engine::utils::FColor& color,
+                                 bool is_dirty) {
         TTF_Text* ttf_text = nullptr;
 
         if (is_dirty) {
             // 获取字体
-            TTF_Font* font = resource_manager_->getFont(font_path, font_size);
+            TTF_Font* font = resource_manager_->getFont(font_id, font_path, font_size);
             if (!font) {
                 return;
             }
@@ -157,8 +177,18 @@ namespace engine::render {
 
     void TextRenderer::drawUIText(std::string &&text, const std::string &font_path, int font_size, const glm::vec2 &position, const engine::utils::FColor &color)
     {
+        drawUIText(std::move(text), engine::resource::toResourceId(font_path), font_path, font_size, position, color);
+    }
+
+    void TextRenderer::drawUIText(std::string &&text,
+                                 engine::resource::ResourceId font_id,
+                                 std::string_view font_path,
+                                 int font_size,
+                                 const glm::vec2 &position,
+                                 const engine::utils::FColor &color)
+    {
         // 获取字体
-        TTF_Font* font = resource_manager_->getFont(font_path, font_size);
+        TTF_Font* font = resource_manager_->getFont(font_id, font_path, font_size);
         if (!font) {
             return;
         }
@@ -189,11 +219,26 @@ namespace engine::render {
      * @return 文本的宽度和高度
      */
     glm::vec2 TextRenderer::getTextSize(const std::string& text, const std::string& font_path, int font_size) {
-        return getTextSize(text, font_path, font_size, true);
+        return getTextSize(text, engine::resource::toResourceId(font_path), font_path, font_size, true);
     }
 
     glm::vec2 TextRenderer::getTextSize(const std::string& text, const std::string& font_path, int font_size, bool is_dirty) {
-        TTF_Font* font = resource_manager_->getFont(font_path, font_size);
+        return getTextSize(text, engine::resource::toResourceId(font_path), font_path, font_size, is_dirty);
+    }
+
+    glm::vec2 TextRenderer::getTextSize(const std::string& text,
+                                        engine::resource::ResourceId font_id,
+                                        std::string_view font_path,
+                                        int font_size) {
+        return getTextSize(text, font_id, font_path, font_size, true);
+    }
+
+    glm::vec2 TextRenderer::getTextSize(const std::string& text,
+                                        engine::resource::ResourceId font_id,
+                                        std::string_view font_path,
+                                        int font_size,
+                                        bool is_dirty) {
+        TTF_Font* font = resource_manager_->getFont(font_id, font_path, font_size);
         if (!font) {
             return { 0.0f, 0.0f };
         }

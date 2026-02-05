@@ -8,9 +8,11 @@
 #include <memory>
 #include <unordered_map>
 #include <functional>
+#include <string_view>
 #include "../render/sprite.h"
 #include "./state/ui_state.h"
 #include <glm/glm.hpp>
+#include "../resource/resource_id.h"
 
 namespace engine::core {
     class Context;
@@ -34,8 +36,8 @@ namespace engine::ui {
      */
     class UIInteractive  : public UIElement {
         std::unique_ptr<state::UIState> current_state_; ///< 当前状态
-        std::unordered_map<std::string, std::unique_ptr<engine::render::Sprite>> sprites_; ///< 精灵映射表
-        std::unordered_map<std::string, std::string> sound_; ///< 声音映射表
+        std::unordered_map<engine::resource::ResourceId, std::unique_ptr<engine::render::Sprite>> sprites_; ///< 精灵映射表
+        std::unordered_map<engine::resource::ResourceId, engine::resource::ResourceId> sound_; ///< 声音映射表
         engine::render::Sprite* current_sprite_ = nullptr; ///< 当前显示的精灵
         bool interactive_ = true; ///< 是否可交互
         std::function<void()> click_callback_; ///< 点击回调函数
@@ -86,14 +88,16 @@ namespace engine::ui {
          * @param name 精灵名称。
          * @param sprite 精灵实例。
          */
-        void addSprite(const std::string& name, std::unique_ptr<engine::render::Sprite> sprite);
+        void addSprite(engine::resource::ResourceId name, std::unique_ptr<engine::render::Sprite> sprite);
+        void addSprite(std::string_view name, std::unique_ptr<engine::render::Sprite> sprite);
         
         /**
          * @brief 获取精灵。
          * @param name 精灵名称。
          * @return 精灵指针，如果不存在则返回nullptr。
          */
-        engine::render::Sprite* getSprite(const std::string& name) const;
+        engine::render::Sprite* getSprite(engine::resource::ResourceId name) const;
+        engine::render::Sprite* getSprite(std::string_view name) const;
         
         /**
          * @brief 设置当前显示的精灵。
@@ -106,20 +110,24 @@ namespace engine::ui {
          * @param name 声音名称。
          * @param sound_file 声音文件路径。
          */
-        void addSound(const std::string& name, const std::string& sound_file);
+        void addSound(engine::resource::ResourceId name, engine::resource::ResourceId sound_id);
+        void addSound(engine::resource::ResourceId name, std::string_view sound_key_or_path);
+        void addSound(std::string_view name, std::string_view sound_key_or_path);
         
         /**
          * @brief 获取声音文件路径。
          * @param name 声音名称。
          * @return 声音文件路径，如果不存在则返回空字符串。
          */
-        std::string getSound(const std::string& name) const;
+        engine::resource::ResourceId getSound(engine::resource::ResourceId name) const;
+        engine::resource::ResourceId getSound(std::string_view name) const;
         
         /**
          * @brief 播放声音。
          * @param name 声音名称。
          */
-        void playSound(const std::string& name);
+        void playSound(engine::resource::ResourceId name);
+        void playSound(std::string_view name);
         
         /**
          * @brief 设置是否可交互。

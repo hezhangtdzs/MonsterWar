@@ -17,7 +17,16 @@ UIText::UIText(engine::core::Context& context, const std::string& text, const st
       text_(text),
       font_path_(font_path),
       font_size_(font_size) {
+        font_id_ = engine::resource::toResourceId(font_path_);
     is_dirty_ = true;
+}
+
+UIText::UIText(engine::core::Context& context, const std::string& text, engine::resource::ResourceId font_id, int font_size)
+        : UIElement(context),
+            text_(text),
+            font_size_(font_size),
+            font_id_(font_id) {
+        is_dirty_ = true;
 }
 
 /**
@@ -70,6 +79,7 @@ void UIText::render() {
     
     // 使用TextRenderer绘制UI文本（屏幕空间）
     text_renderer.drawUIText(text_,
+                           font_id_,
                            font_path_,
                            font_size_,
                            render_pos,
@@ -94,7 +104,7 @@ void UIText::onNotify(engine::interface::EventType event_type, const std::any &d
 
 void UIText::updateSize()
 {
-    size_ = context_.getTextRenderer().getTextSize(text_, font_path_, font_size_, is_dirty_);
+    size_ = context_.getTextRenderer().getTextSize(text_, font_id_, font_path_, font_size_, is_dirty_);
 }
 
 void UIText::ensureUpToDate() const

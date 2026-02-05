@@ -1,7 +1,13 @@
+/**
+ * @file camera.cpp
+ * @brief Camera 类的实现，负责游戏世界的摄像机控制。
+ */
+
 #include "camera.h"
 #include "../component/transform_component.h"
-	#include <cmath>
-	namespace engine::render {
+#include <cmath>
+
+namespace engine::render {
 		/**
 		 * @brief 析构函数。
 		 */

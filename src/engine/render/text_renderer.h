@@ -5,12 +5,14 @@
  */
 
 #include <string>
+#include <string_view>
 #include <glm/vec2.hpp>
 #include <SDL3_ttf/SDL_ttf.h>
 #include <unordered_map>
 #include <memory>
 #include <cstddef>
 #include <cstdint>
+#include "../resource/resource_id.h"
 
 struct SDL_Renderer;
 
@@ -74,6 +76,14 @@ namespace engine::render {
                      const glm::vec2& position,
                      const engine::utils::FColor& color);
 
+        void drawText(const Camera& camera,
+                 const std::string& text,
+                 engine::resource::ResourceId font_id,
+                 std::string_view font_path,
+                 int font_size,
+                 const glm::vec2& position,
+                 const engine::utils::FColor& color);
+
         /**
          * @brief 在屏幕空间中绘制文本（UI 层，不跟随相机）。
          * @param text 要绘制的文本字符串。
@@ -88,6 +98,14 @@ namespace engine::render {
                        const glm::vec2& position,
                         const engine::utils::FColor& color,
                         bool is_dirty = true);
+
+        void drawUIText(const std::string& text,
+                   engine::resource::ResourceId font_id,
+                   std::string_view font_path,
+                   int font_size,
+                   const glm::vec2& position,
+                   const engine::utils::FColor& color,
+                   bool is_dirty = true);
         /**
          * @brief 在屏幕空间中绘制文本（UI 层，不跟随相机）。
          * @param text 要绘制的文本字符串。
@@ -101,6 +119,13 @@ namespace engine::render {
                        int font_size,
                        const glm::vec2& position,
                        const engine::utils::FColor& color);
+
+        void drawUIText(std::string&& text,
+                   engine::resource::ResourceId font_id,
+                   std::string_view font_path,
+                   int font_size,
+                   const glm::vec2& position,
+                   const engine::utils::FColor& color);
         /**
          * @brief 获取文本的渲染尺寸。
          * @param text 文本内容。
@@ -110,6 +135,17 @@ namespace engine::render {
          */
         glm::vec2 getTextSize(const std::string& text, const std::string& font_path, int font_size);
          glm::vec2 getTextSize(const std::string& text, const std::string& font_path, int font_size, bool is_dirty);
+
+        glm::vec2 getTextSize(const std::string& text,
+                      engine::resource::ResourceId font_id,
+                      std::string_view font_path,
+                      int font_size);
+
+        glm::vec2 getTextSize(const std::string& text,
+                      engine::resource::ResourceId font_id,
+                      std::string_view font_path,
+                      int font_size,
+                      bool is_dirty);
 
         // 禁用拷贝和移动语义
         TextRenderer(const TextRenderer&) = delete;

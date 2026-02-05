@@ -247,6 +247,7 @@ bool engine::core::GameApp::initTime()
 bool engine::core::GameApp::initResourceManager() {
 	try {
 		resource_manager_ = std::make_unique<engine::resource::ResourceManager>(sdl_renderer_);
+		resource_manager_->loadResources("assets/data/resource_mapping.json");
 	}
 	catch (const std::exception& e) {
 		spdlog::error("初始化资源管理器失败: {}", e.what());

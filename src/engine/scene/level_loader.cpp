@@ -196,7 +196,7 @@ namespace engine::scene {
                 auto& tile_info = tile_data.info;
                 auto* tile_json = tile_data.json_ptr;
 
-                if (tile_info.sprite.getTextureId().empty()) {
+                if (tile_info.sprite.getTextureId() == engine::resource::InvalidResourceId) {
                     spdlog::error("gid为 {} 的瓦片没有图像纹理。", gid);
                     continue;
                 }

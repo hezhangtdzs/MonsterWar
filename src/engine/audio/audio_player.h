@@ -6,6 +6,7 @@
 
 #include "iaudio_player.h"
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <glm/vec2.hpp>
 
@@ -34,6 +35,7 @@ namespace engine::audio {
 		float music_volume_{ 1.0f };
 		/// 当前播放的音乐文件路径
 		std::string current_music_;
+		engine::resource::ResourceId current_music_id_{ engine::resource::InvalidResourceId };
 
 	public:
 		/**
@@ -90,6 +92,7 @@ namespace engine::audio {
 		 * @return 播放通道ID，失败返回-1
 		 */
 		int playSound(const std::string& path) override;
+		int playSound(engine::resource::ResourceId id, std::string_view file_path = {}) override;
 
 		/**
 		 * @brief 播放空间化音效。
@@ -100,6 +103,7 @@ namespace engine::audio {
 		 * @return 播放通道ID，失败返回-1
 		 */
 		int playSoundSpatial(const std::string& path, const glm::vec2& emitter_world_pos, const glm::vec2& listener_world_pos, float max_distance) override;
+		int playSoundSpatial(engine::resource::ResourceId id, std::string_view file_path, const glm::vec2& emitter_world_pos, const glm::vec2& listener_world_pos, float max_distance) override;
 
 		/**
 		 * @brief 播放背景音乐。
@@ -108,6 +112,7 @@ namespace engine::audio {
 		 * @return 播放成功返回true，否则返回false
 		 */
 		bool playMusic(const std::string& path, int loops = -1) override;
+		bool playMusic(engine::resource::ResourceId id, std::string_view file_path = {}, int loops = -1) override;
 
 		/**
 		 * @brief 停止当前播放的背景音乐。

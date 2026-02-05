@@ -42,7 +42,7 @@ namespace engine::render {
                               const glm::vec2& position,
                               const glm::vec2& scale,
                               double angle) {
-        auto texture = resource_manager_->getTexture(sprite.getTextureId());
+        auto texture = resource_manager_->getTexture(sprite.getTextureId(), sprite.getTexturePath());
         if (!texture) {
             spdlog::error("无法为 ID {} 获取纹理。", sprite.getTextureId());
             return;
@@ -103,7 +103,7 @@ namespace engine::render {
                                 const glm::vec2& scroll_factor,
                                 const glm::bvec2& repeat,
                                 const glm::vec2& scale) {
-        auto texture = resource_manager_->getTexture(sprite.getTextureId());
+        auto texture = resource_manager_->getTexture(sprite.getTextureId(), sprite.getTexturePath());
 		if (!texture) {
 			spdlog::error("无法为 ID {} 获取纹理。", sprite.getTextureId());
 			return;
@@ -169,7 +169,7 @@ namespace engine::render {
     void Renderer::drawUISprite(const Sprite& sprite,
                                 const glm::vec2& position,
                                 const std::optional<glm::vec2>& size) {
-		auto texture = resource_manager_->getTexture(sprite.getTextureId());
+        auto texture = resource_manager_->getTexture(sprite.getTextureId(), sprite.getTexturePath());
         if (!texture) {
             spdlog::error("无法为 ID {} 获取纹理。", sprite.getTextureId());
             return;
@@ -231,7 +231,7 @@ namespace engine::render {
      * @return std::optional<SDL_FRect> 成功返回矩形区域，失败返回 nullopt。
      */
     std::optional<SDL_FRect> Renderer::getSpriteSrcRect(const Sprite& sprite) {
-        auto texture = resource_manager_->getTexture(sprite.getTextureId());
+        auto texture = resource_manager_->getTexture(sprite.getTextureId(), sprite.getTexturePath());
         if (!texture) {
             spdlog::error("无法为 ID {} 获取纹理。", sprite.getTextureId());
             return std::nullopt;

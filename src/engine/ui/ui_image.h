@@ -6,6 +6,7 @@
 
 #include "ui_element.h"
 #include "../render/sprite.h"
+#include "../resource/resource_id.h"
 
 namespace engine::core {
     class Context;
@@ -37,9 +38,13 @@ public:
      * @param position 图片位置。
      * @param size 图片大小（如果为0则使用纹理原始大小）。
      */
-    UIImage(engine::core::Context& context, const std::string& texture_id, 
+        UIImage(engine::core::Context& context, const std::string& texture_id, 
            const glm::vec2& position = {0.0f, 0.0f}, 
            const glm::vec2& size = {0.0f, 0.0f});
+
+        UIImage(engine::core::Context& context, engine::resource::ResourceId texture_id,
+            const glm::vec2& position = {0.0f, 0.0f},
+            const glm::vec2& size = {0.0f, 0.0f});
 
     /**
      * @brief 析构函数。

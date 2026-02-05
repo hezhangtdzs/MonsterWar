@@ -2,6 +2,7 @@
 #include <string>
 #include <string_view>
 #include <glm/vec2.hpp>
+#include "../resource/resource_id.h"
 
 namespace engine::audio {
 
@@ -24,6 +25,10 @@ namespace engine::audio {
 		virtual int playSoundSpatial(const std::string& path, const glm::vec2& emitter_world_pos, const glm::vec2& listener_world_pos, float max_distance) = 0;
 		virtual bool playMusic(const std::string& path, int loops = -1) = 0;
 		virtual void stopMusic() = 0;
+
+		virtual int playSound(engine::resource::ResourceId id, std::string_view file_path = {}) = 0;
+		virtual int playSoundSpatial(engine::resource::ResourceId id, std::string_view file_path, const glm::vec2& emitter_world_pos, const glm::vec2& listener_world_pos, float max_distance) = 0;
+		virtual bool playMusic(engine::resource::ResourceId id, std::string_view file_path = {}, int loops = -1) = 0;
 	};
 
 	/**
@@ -44,6 +49,10 @@ namespace engine::audio {
 		int playSoundSpatial(const std::string& /*path*/, const glm::vec2& /*emitter_world_pos*/, const glm::vec2& /*listener_world_pos*/, float /*max_distance*/) override { return -1; }
 		bool playMusic(const std::string& /*path*/, int /*loops*/ = -1) override { return false; }
 		void stopMusic() override {}
+
+		int playSound(engine::resource::ResourceId /*id*/, std::string_view /*file_path*/ = {}) override { return -1; }
+		int playSoundSpatial(engine::resource::ResourceId /*id*/, std::string_view /*file_path*/, const glm::vec2& /*emitter_world_pos*/, const glm::vec2& /*listener_world_pos*/, float /*max_distance*/) override { return -1; }
+		bool playMusic(engine::resource::ResourceId /*id*/, std::string_view /*file_path*/ = {}, int /*loops*/ = -1) override { return false; }
 	};
 
 } // namespace engine::audio

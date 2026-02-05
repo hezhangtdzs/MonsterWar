@@ -121,7 +121,7 @@ namespace engine::object {
     void ObjectBuilder::buildSprite() {
         if (!game_object_ || !tile_json_) return;
         
-        if (tile_info_.sprite.getTextureId().empty()) {
+        if (tile_info_.sprite.getTextureId() == engine::resource::InvalidResourceId) {
             spdlog::warn("ObjectBuilder: 对象 '{}' 没有图像纹理", name_);
             return;
         }

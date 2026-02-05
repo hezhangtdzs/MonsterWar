@@ -49,6 +49,13 @@ namespace engine::component {
 		 * @param is_flipped 是否水平翻转精灵。
 		 */
 		SpriteComponent(
+			engine::resource::ResourceId texture_id,
+			engine::resource::ResourceManager& resource_manager,
+			engine::utils::Alignment alignment = engine::utils::Alignment::NONE,
+			std::optional<SDL_FRect> source_rect_opt = std::nullopt,
+			bool is_flipped = false
+		);
+		SpriteComponent(
 			const std::string& texture_id,
 			engine::resource::ResourceManager& resource_manager,
 			engine::utils::Alignment alignment = engine::utils::Alignment::NONE,
@@ -75,7 +82,7 @@ namespace engine::component {
 
 		// Getters
 		const engine::render::Sprite& getSprite() const { return sprite_; }         ///< @brief 获取精灵对象
-		const std::string& getTextureId() const { return sprite_.getTextureId(); }  ///< @brief 获取纹理ID
+		engine::resource::ResourceId getTextureId() const { return sprite_.getTextureId(); }  ///< @brief 获取纹理ID
 		bool isFlipped() const { return sprite_.getIsFlipped(); }                      ///< @brief 获取是否翻转
 		bool isHidden() const { return is_hidden_; }                        ///< @brief 获取是否隐藏
 		const glm::vec2& getSpriteSize() const { return sprite_size_; }             ///< @brief 获取精灵尺寸
@@ -88,6 +95,7 @@ namespace engine::component {
 		 * @param texture_id 新的纹理 ID。
 		 * @param source_rect_opt 新的可选源矩形。
 		 */
+		void setSpriteById(engine::resource::ResourceId texture_id, const std::optional<SDL_FRect>& source_rect_opt = std::nullopt);
 		void setSpriteById(const std::string& texture_id, const std::optional<SDL_FRect>& source_rect_opt = std::nullopt);
 		
 		void setFlipped(bool flipped) { sprite_.setIsFlipped(flipped); }           ///< @brief 设置是否翻转

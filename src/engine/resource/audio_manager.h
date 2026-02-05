@@ -2,8 +2,10 @@
 #include <memory>       // 用于 std::unique_ptr
 #include <stdexcept>    // 用于 std::runtime_error
 #include <string>       // 用于 std::string
+#include <string_view>
 #include <unordered_map> // 用于 std::unordered_map
 #include <SDL3_mixer/SDL_mixer.h>
+#include "resource_id.h"
 
 /**
  * @namespace engine::resource
@@ -54,8 +56,8 @@ namespace engine::resource {
 		std::unique_ptr<MIX_Mixer, MixerDeleter> mixer_; ///< SDL_mixer 混音器设备指针
 		std::unique_ptr<MIX_Track, TrackDeleter> music_track_; ///< 专门播放 BGM 的轨道
 		std::unique_ptr<MIX_Track, TrackDeleter> sound_track_; ///< 专门播放 SFX 的轨道
-		std::unordered_map<std::string, std::unique_ptr<MIX_Audio, MixAudioDeleter>> music_; ///< 音乐资源缓存映射表 (文件路径 -> 资源指针)
-		std::unordered_map<std::string, std::unique_ptr<MIX_Audio, MixAudioDeleter>> sounds_; ///< 音效资源缓存映射表 (文件路径 -> 资源指针)
+		std::unordered_map<ResourceId, std::unique_ptr<MIX_Audio, MixAudioDeleter>> music_; ///< 音乐资源缓存映射表 (资源ID -> 资源指针)
+		std::unordered_map<ResourceId, std::unique_ptr<MIX_Audio, MixAudioDeleter>> sounds_; ///< 音效资源缓存映射表 (资源ID -> 资源指针)
 
 
 	public:
@@ -85,6 +87,7 @@ private:
 		 * @param file_path 音效文件的路径。
 		 * @return MIX_Audio* 指向加载后的音效资源的指针。如果加载失败可能返回 nullptr 或抛出异常。
 		 */
+		MIX_Audio* loadSound(ResourceId id, std::string_view file_path);
 		MIX_Audio* loadSound(const std::string& file_path);
 
 		/**
@@ -92,12 +95,14 @@ private:
 		 * @param file_path 音效文件的路径。
 		 * @return MIX_Audio* 音效资源指针。
 		 */
+		MIX_Audio* getSound(ResourceId id, std::string_view file_path = {});
 		MIX_Audio* getSound(const std::string& file_path);
 
 		/**
 		 * @brief 从缓存中卸载并释放指定的音效资源。
 		 * @param file_path 要卸载的音效文件路径。
 		 */
+		void unloadSound(ResourceId id);
 		void unloadSound(const std::string& file_path);
 
 		/**
@@ -109,6 +114,7 @@ private:
 		 * @brief 播放音效（即发即弃模式）。
 		 * @param file_path 音效文件路径。
 		 */
+		void playSound(ResourceId id, std::string_view file_path = {});
 		void playSound(const std::string& file_path);
 
 		void stopSound();
@@ -118,6 +124,7 @@ private:
 		 * @param file_path 音乐文件的路径。
 		 * @return MIX_Audio* 指向加载后的音乐资源的指针。
 		 */
+		MIX_Audio* loadMusic(ResourceId id, std::string_view file_path);
 		MIX_Audio* loadMusic(const std::string& file_path);
 
 		/**
@@ -125,12 +132,14 @@ private:
 		 * @param file_path 音乐文件的路径。
 		 * @return MIX_Audio* 音乐资源指针。
 		 */
+		MIX_Audio* getMusic(ResourceId id, std::string_view file_path = {});
 		MIX_Audio* getMusic(const std::string& file_path);
 
 		/**
 		 * @brief 从缓存中卸载并释放指定的音乐资源。
 		 * @param file_path 要卸载的音乐文件路径。
 		 */
+		void unloadMusic(ResourceId id);
 		void unloadMusic(const std::string& file_path);
 
 		/**
@@ -142,6 +151,7 @@ private:
 		 * @brief 播放背景音乐（循环播放模式）。
 		 * @param file_path 音乐文件路径。
 		 */
+		void playMusic(ResourceId id, std::string_view file_path = {});
 		void playMusic(const std::string& file_path);
 
 		/**

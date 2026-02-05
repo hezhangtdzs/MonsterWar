@@ -1,3 +1,8 @@
+/**
+ * @file subject.cpp
+ * @brief Subject 类的实现，观察者模式中的主题基类。
+ */
+
 #include "subject.h"
 #include "observer.h"
 #include <algorithm>

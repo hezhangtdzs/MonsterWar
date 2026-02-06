@@ -6,6 +6,7 @@
 #include "../component/name_component.h"
 #include "../component/sprite_component.h"
 #include "../component/transform_component.h"
+#include "../component/render_component.h"
 #include "../resource/resource_manager.h"
 
 #include <entt/entt.hpp>
@@ -74,6 +75,7 @@ BasicEntityBuilder* BasicEntityBuilder::build() {
     buildBase();
     buildSprite();
     buildTransform();
+    buildRender();
     buildAnimation();
     buildAudio();
     return this;
@@ -126,6 +128,11 @@ void BasicEntityBuilder::buildTransform() {
     }
 
     registry_.emplace<engine::component::TransformComponent>(entity_id_, position_, scale, rotation);
+}
+void BasicEntityBuilder::buildRender() {
+    if (tile_info_) {
+        registry_.emplace<engine::component::RenderComponent>(entity_id_, level_loader_.current_layer_, position_.y);
+    }
 }
 
 void BasicEntityBuilder::buildAnimation() {

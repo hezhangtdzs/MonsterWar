@@ -121,7 +121,8 @@ namespace engine::render {
      * @brief 清除当前渲染目标的所有内容。
      */
     void Renderer::clearScreen() {
-        if (SDL_RenderClear(renderer_) == false) {
+        setDrawColor(static_cast<Uint8>(back_ground_.r * 255), static_cast<Uint8>(back_ground_.g * 255), static_cast<Uint8>(back_ground_.b * 255), static_cast<Uint8>(back_ground_.a * 255));
+         if (SDL_RenderClear(renderer_) == false) {
             spdlog::error("清除渲染器失败：{}", SDL_GetError());
         }
 	}

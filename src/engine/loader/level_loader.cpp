@@ -5,10 +5,12 @@
 #include "../component/transform_component.h"
 #include "../component/tilelayer_component.h"
 #include "../component/sprite_component.h"
+#include "../component/render_component.h"
 #include "../component/animation_component.h"
 #include "../component/audio_component.h"
 #include "../scene/scene.h"
 #include "../core/context.h"
+#include "../render/renderer.h"
 #include "../resource/resource_manager.h"
 #include "../render/animation.h"
 #include "../utils/math.h"
@@ -51,7 +53,11 @@ namespace engine::loader {
         map_path_ = level_path;
         map_size_ = glm::ivec2(json_data.value("width", 0), json_data.value("height", 0));
         tile_size_ = glm::ivec2(json_data.value("tilewidth", 0), json_data.value("tileheight", 0));
-
+        if (json_data.contains("backgroundcolor")) {
+            auto color_string = json_data["backgroundcolor"].get<std::string>();
+            auto color = engine::utils::parseHexColor(color_string);
+            scene_->getContext().getRenderer().setBackgroundColor(color);
+        }
         // 4. 加载 tileset 数据
         if (json_data.contains("tilesets") && json_data["tilesets"].is_array()) {
             for (const auto& tileset_json : json_data["tilesets"]) {
@@ -78,6 +84,13 @@ namespace engine::loader {
                 spdlog::info("图层 '{}' 不可见，跳过加载。", layer_json.value("name", "Unnamed"));
                 continue;
             }
+            if (layer_json.contains("properties")) {
+                for (auto& property : layer_json["properties"]) {
+                    if (property.contains("name") && property["name"] == "order") {
+                        current_layer_ = property["value"].get<int>();
+                    }
+                }
+            }
 
             // 根据图层类型决定加载方法
             if (layer_type == "imagelayer") {
@@ -92,6 +105,7 @@ namespace engine::loader {
             else {
                 spdlog::warn("不支持的图层类型: {}", layer_type);
             }
+            current_layer_++; // 准备下一个图层的默认渲染顺序索引
         }
 
         spdlog::info("关卡加载完成: {}", level_path);
@@ -126,6 +140,7 @@ namespace engine::loader {
             registry.emplace<engine::component::TransformComponent>(entity, offset);
             registry.emplace<engine::component::ParallaxComponent>(entity, scroll_factor, repeat);
             registry.emplace<engine::component::SpriteComponent>(entity, sprite);
+            registry.emplace<engine::component::RenderComponent>(entity, current_layer_, 0.0f);
         // // 创建游戏对象
         // auto game_object = std::make_unique<engine::object::GameObject>(layer_name);
         // // 依次添加Transform，Parallax组件
@@ -224,8 +239,7 @@ namespace engine::loader {
                 continue;
             }
 
-            auto tile_data = getTileDataByGid(gid);
-            auto& tile_info = tile_data.info;
+            auto tile_info = getTileInfoByGid(gid);
             if (tile_info.type_ == engine::component::TileType::EMPTY &&
                 tile_info.sprite_.texture_id_ == entt::null &&
                 tile_info.sprite_.texture_path_.empty()) {
@@ -270,8 +284,6 @@ namespace engine::loader {
         auto make_empty_data = []() {
             return TileData{ engine::component::TileInfo(engine::component::Sprite(), engine::component::TileType::EMPTY), nullptr };
         };
-
-        // 清除GID的最高三位（翻转信息），得到原始GID值
         const int FLIP_MASK = 0x1FFFFFFF;
         int original_gid = gid & FLIP_MASK;
 
@@ -309,7 +321,7 @@ namespace engine::loader {
                 glm::vec2(static_cast<float>(ts_tile_width), static_cast<float>(ts_tile_height))
             };
             
-            engine::component::Sprite sprite{ texture_path, texture_rect };
+            engine::component::Sprite sprite{ texture_path, texture_rect};
             
             // 查找瓦片的特定 JSON 配置用于获取类型和碰撞框
             const nlohmann::json* tile_json = nullptr;

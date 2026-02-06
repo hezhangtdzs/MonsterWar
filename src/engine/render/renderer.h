@@ -25,6 +25,8 @@ namespace engine::render {
 		/// 用于获取纹理和资源的管理类指针
 		engine::resource::ResourceManager* resource_manager_ = nullptr;
 
+		engine::utils::FColor back_ground_{0.0f, 0.0f, 0.0f, 0.0f}; ///< @brief 背景颜色，用于清屏或绘制背景色
+
 	public:
 		/**
 		 * @brief 构造 Renderer 实例。
@@ -79,6 +81,13 @@ namespace engine::render {
 		 * @brief 清除当前屏幕缓冲区。
 		 */
 		void clearScreen();
+		/**
+		 * @brief 设置背景颜色，用于清屏或绘制背景。
+		 * @param color 背景颜色（RGBA）。
+		 */
+		void setBackgroundColor(const engine::utils::FColor& color) { 
+			back_ground_ = color;	
+		}
 
 		/**
 		 * @brief 设置后续绘图操作的基础颜色（r, g, b, a）。

@@ -57,6 +57,7 @@ set(CORE_SOURCES
     src/engine/system/movement_system.cpp
     src/engine/system/animation_system.cpp
     src/engine/system/render_system.cpp
+    src/engine/system/ysort_system.cpp
 
     src/engine/input/input_manager.cpp
 

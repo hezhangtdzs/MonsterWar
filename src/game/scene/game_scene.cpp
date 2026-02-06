@@ -12,6 +12,7 @@
 #include "../../engine/system/render_system.h"
 #include "../../engine/system/movement_system.h"
 #include "../../engine/system/animation_system.h"
+#include "../../engine/system/ysort_system.h"
 #include "../../engine/ui/ui_manager.h"
 #include "../../engine/ui/ui_image.h"
 #include "../../engine/ui/ui_text.h"
@@ -32,6 +33,7 @@ GameScene::GameScene(engine::core::Context& context)
     render_system_ = std::make_unique<engine::system::RenderSystem>();
     movement_system_ = std::make_unique<engine::system::MovementSystem>();
     animation_system_ = std::make_unique<engine::system::AnimationSystem>();
+    ysort_system_ = std::make_unique<engine::system::YSortSystem>();
 
     spdlog::info("GameScene 构造完成");
 }
@@ -48,7 +50,7 @@ void GameScene::init() {
 void GameScene::update(float delta_time) {
     movement_system_->update(registry_, delta_time);
     animation_system_->update(registry_, delta_time);
-
+    ysort_system_->update(registry_);   
     Scene::update(delta_time);
 }
 

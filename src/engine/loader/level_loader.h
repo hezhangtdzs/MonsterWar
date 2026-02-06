@@ -52,6 +52,8 @@ namespace engine::loader {
             int next_first_gid = -1;
             const nlohmann::json* data = nullptr;
         } cache_;
+
+        int current_layer_{0};  ///< 当前图层的渲染顺序索引
     public:
         LevelLoader() = default;
         ~LevelLoader();

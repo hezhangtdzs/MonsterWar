@@ -1,21 +1,14 @@
 #pragma once
-/**
- * @file math.h
- * @brief 包含游戏引擎使用的数学工具和结构体定义。
- */
-
-#include <glm/glm.hpp>
+#include <glm/vec2.hpp>
+#include <string_view>
 
 namespace engine::utils {
 
-    /**
-     * @struct Rect
-     * @brief 表示一个二维矩形区域。
-     * 
-     * 该结构体用于定义游戏中的矩形区域，包含位置和大小信息，
-     * 广泛用于碰撞检测、渲染裁剪和UI布局等场景。
-     */
-    struct Rect{
+/**
+ * @brief 自定义矩形结构体，包含位置和大小。
+ */
+struct Rect
+{
     glm::vec2 position{};
     glm::vec2 size{};
     
@@ -23,29 +16,57 @@ namespace engine::utils {
     Rect(glm::vec2 position, glm::vec2 size) : position(position), size(size) {}
     Rect(float x, float y, float width, float height) : position(x, y), size(width, height) {}
 };
-    /**
- * @struct FColor
- * @brief 浮点颜色结构，使用 0.0f-1.0f 范围的浮点数表示 RGBA 颜色。
+
+/**
+ * @brief 自定义颜色结构体。
  */
-struct FColor {
-    float r{}; ///< 红色通道 (0.0f-1.0f)
-    float g{}; ///< 绿色通道 (0.0f-1.0f)
-    float b{}; ///< 蓝色通道 (0.0f-1.0f)
-    float a{}; ///< alpha通道 (0.0f-1.0f)
-    
-    /**
-     * @brief 构造函数，默认创建白色不透明颜色。
-     */
-    FColor() : r(1.0f), g(1.0f), b(1.0f), a(1.0f) {}
-    
-    /**
-     * @brief 构造函数，指定 RGBA 值。
-     * @param r 红色通道值
-     * @param g 绿色通道值
-     * @param b 蓝色通道值
-     * @param a alpha通道值
-     */
-    FColor(float r, float g, float b, float a = 1.0f) : r(r), g(g), b(b), a(a) {}
+struct FColor
+{
+    float r{};
+    float g{};
+    float b{};
+    float a{};
+    constexpr FColor() = default;
+    constexpr FColor(float r, float g, float b, float a = 1.0f) : r(r), g(g), b(b), a(a) {}
 };
 
+/**
+ * @brief 解析十六进制颜色字符串（如 "#RRGGBB" 或 "#RRGGBBAA"）为 FColor
+ * @param hex_color 颜色字符串（支持 "#RRGGBB" 或 "#RRGGBBAA" 格式）
+ * @return FColor 结构体，若解析失败则返回全 0
+ */
+ constexpr FColor parseHexColor(std::string_view hex_color) {
+    // 16进制符号（字符）转为10进制整数的工具函数
+    auto hexToInt = [](char c) -> int {
+        if ('0' <= c && c <= '9') return c - '0';           // 0-9: 针对'0'的偏移
+        if ('a' <= c && c <= 'f') return 10 + (c - 'a');    // a-f: 针对'a'的偏移 + 10
+        if ('A' <= c && c <= 'F') return 10 + (c - 'A');    // A-F: 针对'A'的偏移 + 10
+        return 0;
+    };
+
+    // 检查有效性 (第一个字符必须是#，总长度必须为7位或者9位)
+    if (hex_color.empty() || hex_color[0] != '#') return {0.0f, 0.0f, 0.0f, 0.0f};
+    size_t len = hex_color.length();
+    if (len != 7 && len != 9) return {0.0f, 0.0f, 0.0f, 0.0f}; // 只支持 #RRGGBB 或 #RRGGBBAA
+
+    // 解析rgb颜色分量（每个颜色2位，高位*16 + 低位），范围 0-255
+    int r = hexToInt(hex_color[1]) * 16 + hexToInt(hex_color[2]);
+    int g = hexToInt(hex_color[3]) * 16 + hexToInt(hex_color[4]);
+    int b = hexToInt(hex_color[5]) * 16 + hexToInt(hex_color[6]);
+
+    // 解析alpha分量（没有该数据则使用默认值255不透明）
+    int a = 255;
+    if (len == 9) {
+        a = hexToInt(hex_color[7]) * 16 + hexToInt(hex_color[8]);
+    }
+
+    // 返回归一化到0.0-1.0范围的颜色值
+    return {
+        static_cast<float>(r) / 255.0f,
+        static_cast<float>(g) / 255.0f,
+        static_cast<float>(b) / 255.0f,
+        static_cast<float>(a) / 255.0f
+    };
 }
+
+} // namespace engine::utils

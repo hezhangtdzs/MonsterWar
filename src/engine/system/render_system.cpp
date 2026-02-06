@@ -20,6 +20,7 @@
 #include "render_system.h"
 #include "../component/transform_component.h"
 #include "../component/sprite_component.h"
+#include "../component/render_component.h"
 #include <spdlog/spdlog.h>
 #include <glm/vec2.hpp>
 #include "../render/renderer.h"
@@ -28,27 +29,32 @@
 namespace engine::system {
 
 void RenderSystem::update(entt::registry& registry, render::Renderer& renderer, const render::Camera& camera) {
-    // 创建组件视图：获取同时具有 TransformComponent 和 SpriteComponent 的实体
-    auto view = registry.view<component::TransformComponent, component::SpriteComponent>();
+    
+    registry.sort<component::RenderComponent>([](const auto& lhs, const auto& rhs) {
+        return lhs < rhs; // 按深度排序，确保正确的渲染顺序
+    });
 
-    // 遍历所有可渲染实体
+    // 获取同时具有 RenderComponent, TransformComponent 和 SpriteComponent 的实体视图
+    auto view = registry.view<component::RenderComponent, component::TransformComponent, component::SpriteComponent>();
+
+    // 遍历 RenderComponent 的存储（已按深度排序），确保正确的渲染顺序
     for (auto entity : view) {
-        // 获取变换组件（定义位置、旋转、缩放）
-        const auto& transform = view.get<component::TransformComponent>(entity);
+        // 仅处理视图中包含的实体
+        if (!view.contains(entity)) {
+            continue;
+        }
 
-        // 获取精灵组件（定义外观、偏移、大小）
+        // 获取组件（此时已保证实体在该视图中）
+        const auto& transform = view.get<component::TransformComponent>(entity);
         const auto& sprite = view.get<component::SpriteComponent>(entity);
 
         // 计算最终渲染位置：实体位置 + 精灵偏移
-        // 这样可以将精灵的锚点与实体的位置分离，实现更灵活的渲染控制
         auto position = transform.position_ + sprite.offset_;
 
         // 计算最终渲染大小：精灵大小 × 变换缩放
-        // 允许通过 TransformComponent 的 scale_ 统一调整精灵大小
         auto size = sprite.size_ * transform.scale_;
 
-        // 调用渲染器绘制精灵
-        // 参数：摄像机、精灵数据、位置、大小、旋转角度
+        // 调用渲染器绘制
         renderer.drawSprite(camera, sprite.sprite_, position, size, transform.rotation_);
     }
 }

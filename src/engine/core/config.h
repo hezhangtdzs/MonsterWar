@@ -26,6 +26,8 @@ namespace engine::core {
         std::string window_title_ = "SunnyLand";    ///< 窗口标题
         int window_width_ = 1280;                   ///< 窗口宽度
         int window_height_ = 720;                   ///< 窗口高度
+        float window_scale_ = 1.0f;                  ///< 窗口缩放比例
+        float logical_scale_ = 1.0f;                  ///< 逻辑缩放比例
         bool window_resizable_ = true;              ///< 窗口是否可调整大小
 
         // 图形设置

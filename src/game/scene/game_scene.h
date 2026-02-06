@@ -21,11 +21,7 @@ public:
     void clean() override;
 
 private:
-    // --- 测试资源管理器 ---
-    void testResourceManager();
-    // --- 测试ECS ---
-    void testECS();
-
+    [[nodiscard]] bool loadLevel();
 };
 
 } // namespace game::scene

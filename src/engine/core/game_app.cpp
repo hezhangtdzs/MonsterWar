@@ -76,9 +76,9 @@ bool engine::core::GameApp::init()
 		initResourceManager()&&
 		initAudioPlayer()&&
 		initRenderer()&&
+		initGameState()&&
 		initTextRenderer()&&
 		initCamera()&&
-		initGameState()&&
 		initDispatcher()&&
 		initContext()&&
 		initSceneManager()) 
@@ -201,7 +201,7 @@ bool engine::core::GameApp::initSDL()
 		return false;
 	}
 
-	window_ = SDL_CreateWindow(config_->window_title_.c_str(),config_->window_width_, config_->window_height_, SDL_WINDOW_RESIZABLE);
+	window_ = SDL_CreateWindow(config_->window_title_.c_str(), static_cast<int>(config_->window_width_ * config_->window_scale_), static_cast<int>(config_->window_height_ * config_->window_scale_), SDL_WINDOW_RESIZABLE);
 	if (window_ == nullptr) {
 		spdlog::error("无法创建窗口! SDL错误: {}", SDL_GetError());
 		return false;
@@ -215,7 +215,7 @@ bool engine::core::GameApp::initSDL()
 	int vsync_mode = config_->vsync_enabled_ ? SDL_RENDERER_VSYNC_ADAPTIVE : SDL_RENDERER_VSYNC_DISABLED;
 	SDL_SetRenderVSync(sdl_renderer_, vsync_mode);
 	
-	SDL_SetRenderLogicalPresentation(sdl_renderer_, config_->window_width_/2, config_->window_height_/2, SDL_LOGICAL_PRESENTATION_LETTERBOX);
+	SDL_SetRenderLogicalPresentation(sdl_renderer_, static_cast<int>(config_->window_width_ * config_->logical_scale_), static_cast<int>(config_->window_height_ * config_->logical_scale_), SDL_LOGICAL_PRESENTATION_LETTERBOX);
 	is_running_ = true;
 	return true;
 }
@@ -295,7 +295,7 @@ bool engine::core::GameApp::initTextRenderer()
 bool engine::core::GameApp::initCamera()
 {
 	try {
-		camera_ = std::make_unique<engine::render::Camera>( glm::vec2(config_->window_width_/2, config_->window_height_/2));
+		camera_ = std::make_unique<engine::render::Camera>(game_state_->getWindowLogicalSize());
 
 	}
 	catch (const std::exception& e) {

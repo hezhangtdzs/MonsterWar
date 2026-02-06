@@ -66,7 +66,7 @@ protected:
 		const std::string& getSceneName() const { return scene_name_; }
 		bool isInitialized() const { return is_initialized_; }
 		engine::core::Context& getContext() const { return context_; }
-
+		entt::registry& getRegistry() { return registry_; }
 
 		void setSceneName(const std::string& scene_name) { scene_name_ = scene_name; }
 		void setInitialized(bool initialized) {

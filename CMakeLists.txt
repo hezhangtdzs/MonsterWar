@@ -72,7 +72,8 @@ set(CORE_SOURCES
     src/engine/ui/state/pressed_state.cpp
 
 
-    # src/engine/scene/level_loader.cpp
+    src/engine/loader/level_loader.cpp
+    src/engine/loader/basic_entity_builder.cpp
     src/engine/scene/scene.cpp
     src/engine/scene/scene_manager.cpp
 

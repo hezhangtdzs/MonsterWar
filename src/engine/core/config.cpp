@@ -76,6 +76,8 @@ void engine::core::Config::fromJson(const nlohmann::json& j)
         window_title_ = window_config.value("title", window_title_);
         window_width_ = window_config.value("width", window_width_);
         window_height_ = window_config.value("height", window_height_);
+        window_scale_ = window_config.value("window_scale", window_scale_);
+        logical_scale_ = window_config.value("logical_scale", logical_scale_);
         window_resizable_ = window_config.value("resizable", window_resizable_);
     }
 
@@ -139,6 +141,8 @@ nlohmann::ordered_json engine::core::Config::toJson() const
             {"title", window_title_},
             {"width", window_width_},
             {"height", window_height_},
+            {"scale", window_scale_},
+            {"logical_scale", logical_scale_},
             {"resizable", window_resizable_}
         }},
         {"graphics", {

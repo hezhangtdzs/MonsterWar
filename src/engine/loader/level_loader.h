@@ -69,6 +69,14 @@ namespace engine::loader {
          */
         [[nodiscard]]bool loadLevel(const std::string& map_path, engine::scene::Scene* scene);
 
+        /**
+         * @brief 设置自定义实体构建器
+         * @param builder 实体构建器指针，LevelLoader 将接管其所有权
+         */
+        void setEntityBuilder(std::unique_ptr<BasicEntityBuilder> builder) {
+            entity_builder_ = std::move(builder);
+        }
+
     private:
         /** @brief 解析并向场景添加图像图层（Image Layer）。 */
         void loadImageLayer(const nlohmann::json& layer_json);

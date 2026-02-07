@@ -20,7 +20,7 @@ namespace engine::loader {
     class BasicEntityBuilder {
     public:
         BasicEntityBuilder(LevelLoader& level_loader, engine::core::Context& context, entt::registry& registry);
-        ~BasicEntityBuilder();
+        virtual ~BasicEntityBuilder();
 
         void reset();
 
@@ -28,7 +28,7 @@ namespace engine::loader {
         BasicEntityBuilder* configure(const nlohmann::json* object_json, const engine::component::TileInfo* tile_info);
         BasicEntityBuilder* configure(int index, const engine::component::TileInfo* tile_info);
 
-        BasicEntityBuilder* build();
+        virtual BasicEntityBuilder* build();
         entt::entity getEntityID();
 
         void buildBase();
@@ -38,7 +38,7 @@ namespace engine::loader {
         void buildAnimation();
         void buildAudio();
 
-    private:
+    protected:
         LevelLoader& level_loader_;
         engine::core::Context& context_;
         entt::registry& registry_;
@@ -51,6 +51,7 @@ namespace engine::loader {
         glm::vec2 position_{0.0f, 0.0f};
         glm::vec2 dst_size_{0.0f, 0.0f};
         glm::vec2 src_size_{0.0f, 0.0f};
+        float depth_{0.0f};
     };
 
 } // namespace engine::loader

@@ -1,6 +1,8 @@
 #pragma once
 #include <glm/vec2.hpp>
 #include <string_view>
+#include <random>
+
 
 namespace engine::utils {
 
@@ -67,6 +69,34 @@ struct FColor
         static_cast<float>(b) / 255.0f,
         static_cast<float>(a) / 255.0f
     };
+}
+/**
+ * @brief 生成指定范围内的随机整数 [min, max]
+ * @param min 最小值（包含）
+ * @param max 最大值（包含）
+ * @return 随机整数
+ */
+ inline int randomInt(int min, int max) {
+    // static thread_local 表示该变量在每个线程中各自独立，互不影响，避免多线程下的竞争条件
+    static thread_local std::mt19937 generator{std::random_device{}()};
+    std::uniform_int_distribution<int> distribution(min, max);
+    return distribution(generator);
+}
+
+/**
+ * @brief 根据等级和稀有度计算属性缩放值
+ * @param base 基础属性值
+ * @param level 等级（默认为1）
+ * @param rarity 稀有度（默认为1）
+ * @return 缩放后的属性值
+ *
+ * @details
+ * 计算公式: base × (0.95 + 0.05 × level) × (0.9 + 0.1 × rarity)
+ * - 等级系数: 每级增加5%，1级为100%
+ * - 稀有度系数: 每级增加10%，1级为100%
+ */
+inline float statModify(float base, int level = 1, int rarity = 1) {
+    return base * (0.95f + 0.05f * level) * (0.9f + 0.1f * rarity);
 }
 
 } // namespace engine::utils

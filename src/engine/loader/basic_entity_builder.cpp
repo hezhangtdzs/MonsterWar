@@ -113,6 +113,7 @@ void BasicEntityBuilder::buildTransform() {
         position_ = glm::vec2(object_json_->value("x", 0.0f), object_json_->value("y", 0.0f));
         dst_size_ = glm::vec2(object_json_->value("width", 0.0f), object_json_->value("height", 0.0f));
         position_ = glm::vec2(position_.x, position_.y - dst_size_.y);
+        depth_ = position_.y;
         rotation = object_json_->value("rotation", 0.0f);
         if (tile_info_) {
             src_size_ = glm::vec2(tile_info_->sprite_.src_rect_.size.x, tile_info_->sprite_.src_rect_.size.y);
@@ -131,7 +132,7 @@ void BasicEntityBuilder::buildTransform() {
 }
 void BasicEntityBuilder::buildRender() {
     if (tile_info_) {
-        registry_.emplace<engine::component::RenderComponent>(entity_id_, level_loader_.current_layer_, position_.y);
+        registry_.emplace<engine::component::RenderComponent>(entity_id_, level_loader_.current_layer_, depth_);
     }
 }
 

@@ -36,9 +36,10 @@ void RenderSystem::update(entt::registry& registry, render::Renderer& renderer, 
 
     // 获取同时具有 RenderComponent, TransformComponent 和 SpriteComponent 的实体视图
     auto view = registry.view<component::RenderComponent, component::TransformComponent, component::SpriteComponent>();
+    
 
     // 遍历 RenderComponent 的存储（已按深度排序），确保正确的渲染顺序
-    for (auto entity : view) {
+    for (auto [entity, render] : registry.storage<component::RenderComponent>().each()) {
         // 仅处理视图中包含的实体
         if (!view.contains(entity)) {
             continue;

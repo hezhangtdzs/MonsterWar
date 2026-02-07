@@ -30,7 +30,7 @@ void setupInitialScene(engine::core::Context& context) {
 
 int main(int /* argc */, char* /* argv */[]) {
     engine::core::GameApp app;
-    spdlog::set_level(spdlog::level::info);
+    spdlog::set_level(spdlog::level::debug);
     app.setOnInitCallback(setupInitialScene);
     app.run();
     return 0;

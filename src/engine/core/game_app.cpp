@@ -71,6 +71,7 @@ bool engine::core::GameApp::init()
 {
 	if (initConfig() &&
 		initSDL() &&
+		initDispatcher() &&
 		initInputManager() &&
 		initTime() && 
 		initResourceManager()&&
@@ -79,7 +80,6 @@ bool engine::core::GameApp::init()
 		initGameState()&&
 		initTextRenderer()&&
 		initCamera()&&
-		initDispatcher()&&
 		initContext()&&
 		initSceneManager()) 
 	{

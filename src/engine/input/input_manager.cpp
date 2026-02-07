@@ -19,6 +19,10 @@ InputManager::InputManager(SDL_Renderer* sdl_renderer, entt::dispatcher* dispatc
 		spdlog::error("输入管理器: SDL_Renderer 为空指针");
 		throw std::runtime_error("输入管理器: SDL_Renderer 为空指针");
 	}
+	if (!dispatcher_) {
+		spdlog::error("输入管理器: dispatcher 为空指针");
+		throw std::runtime_error("输入管理器: dispatcher 为空指针");
+	}
 	initializeMapFromConfig(config);
 
 	float x, y;

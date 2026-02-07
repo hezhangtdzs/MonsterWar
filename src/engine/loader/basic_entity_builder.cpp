@@ -1,3 +1,11 @@
+/**
+ * @file basic_entity_builder.cpp
+ * @brief BasicEntityBuilder 类的实现，提供实体构建功能。
+ *
+ * @details
+ * 本文件实现了 BasicEntityBuilder 的所有方法，包括配置、构建和组件添加。
+ */
+
 #include "basic_entity_builder.h"
 
 #include "level_loader.h"

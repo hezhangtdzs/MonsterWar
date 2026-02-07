@@ -1,3 +1,21 @@
+/**
+ * @file blueprint_manager.cpp
+ * @brief BlueprintManager 类的实现，负责加载和管理游戏单位蓝图。
+ * 
+ * @details
+ * 本文件实现了 BlueprintManager 类的所有方法，包括：
+ * - 从 JSON 文件加载敌人蓝图
+ * - 解析各种蓝图数据结构
+ * - 管理蓝图缓存
+ * - 提供蓝图查询接口
+ * 
+ * BlueprintManager 是游戏工厂系统的重要组成部分，
+ * 为 EntityFactory 创建敌人实体提供必要的数据支持。
+ * 
+ * @see game::factory::BlueprintManager 蓝图管理器类定义
+ * @see game::factory::EntityFactory 使用蓝图创建实体的工厂类
+ */
+
 #include "blueprint_manager.h"
 
 #include <string>
@@ -14,10 +32,29 @@
 
 namespace game::factory {
 
+/**
+ * @brief BlueprintManager 构造函数
+ * @param resource_manager 资源管理器引用，用于预加载音效
+ */
 BlueprintManager::BlueprintManager(engine::resource::ResourceManager& resource_manager)
     : resource_manager_(resource_manager) {
+    spdlog::info("BlueprintManager initialized");
 }
 
+/**
+ * @brief 从 JSON 文件加载敌人蓝图
+ * @param enemy_json_path 敌人数据 JSON 文件路径
+ * @return 加载成功返回 true
+ * 
+ * @details
+ * 该方法实现了以下功能：
+ * 1. 打开并解析 JSON 文件
+ * 2. 遍历 JSON 中的每个敌人类型
+ * 3. 解析各个子蓝图（统计、精灵、动画、音效、敌人属性、显示信息）
+ * 4. 组装完整的敌人蓝图
+ * 5. 将蓝图存入缓存
+ * 6. 记录加载结果
+ */
 bool BlueprintManager::loadEnemyClassBlueprints(std::string_view enemy_json_path) {
     std::string path_str(enemy_json_path);
     std::ifstream input_file(path_str);
@@ -66,14 +103,30 @@ bool BlueprintManager::loadEnemyClassBlueprints(std::string_view enemy_json_path
     return true;
 }
 
+/**
+ * @brief 获取指定类型的敌人蓝图
+ * @param id 敌人类型ID（entt::hashed_string 值）
+ * @return 敌人蓝图的常量引用
+ * @throws std::out_of_range 如果蓝图不存在
+ */
 const data::EnemyClassBlueprint& BlueprintManager::getEnemyClassBlueprint(entt::id_type id) const {
     return enemy_class_blueprints_.at(id);
 }
 
+/**
+ * @brief 检查是否存在指定类型的蓝图
+ * @param id 敌人类型ID
+ * @return 存在返回 true
+ */
 bool BlueprintManager::hasEnemyClassBlueprint(entt::id_type id) const {
     return enemy_class_blueprints_.find(id) != enemy_class_blueprints_.end();
 }
 
+/**
+ * @brief 解析统计数据蓝图
+ * @param json JSON 数据
+ * @return 解析后的统计数据蓝图
+ */
 data::StatsBlueprint BlueprintManager::parseStats(const nlohmann::json& json) const {
     data::StatsBlueprint stats;
     stats.hp_ = json.value("hp", 100.0f);
@@ -84,6 +137,11 @@ data::StatsBlueprint BlueprintManager::parseStats(const nlohmann::json& json) co
     return stats;
 }
 
+/**
+ * @brief 解析精灵蓝图
+ * @param json JSON 数据
+ * @return 解析后的精灵蓝图
+ */
 data::SpriteBlueprint BlueprintManager::parseSprite(const nlohmann::json& json) const {
     data::SpriteBlueprint sprite;
     sprite.path_ = json.value("sprite_sheet", "");
@@ -102,6 +160,11 @@ data::SpriteBlueprint BlueprintManager::parseSprite(const nlohmann::json& json) 
     return sprite;
 }
 
+/**
+ * @brief 解析动画蓝图映射
+ * @param json JSON 数据
+ * @return 解析后的动画蓝图映射
+ */
 std::unordered_map<entt::id_type, data::AnimationBlueprint>
 BlueprintManager::parseAnimationsMap(const nlohmann::json& json) const {
     std::unordered_map<entt::id_type, data::AnimationBlueprint> animations;
@@ -127,6 +190,14 @@ BlueprintManager::parseAnimationsMap(const nlohmann::json& json) const {
     return animations;
 }
 
+/**
+ * @brief 解析音效蓝图
+ * @param json JSON 数据
+ * @return 解析后的音效蓝图
+ * 
+ * @details
+ * 该方法不仅解析音效数据，还会预加载音效资源到 ResourceManager。
+ */
 data::SoundBlueprint BlueprintManager::parseSound(const nlohmann::json& json) {
     data::SoundBlueprint sounds;
 
@@ -148,6 +219,11 @@ data::SoundBlueprint BlueprintManager::parseSound(const nlohmann::json& json) {
     return sounds;
 }
 
+/**
+ * @brief 解析敌人特定属性蓝图
+ * @param json JSON 数据
+ * @return 解析后的敌人蓝图
+ */
 data::EnemyBlueprint BlueprintManager::parseEnemy(const nlohmann::json& json) const {
     data::EnemyBlueprint enemy;
     enemy.ranged_ = json.value("ranged", false);
@@ -155,6 +231,11 @@ data::EnemyBlueprint BlueprintManager::parseEnemy(const nlohmann::json& json) co
     return enemy;
 }
 
+/**
+ * @brief 解析显示信息蓝图
+ * @param json JSON 数据
+ * @return 解析后的显示信息蓝图
+ */
 data::DisplayInfoBlueprint BlueprintManager::parseDisplayInfo(const nlohmann::json& json) const {
     data::DisplayInfoBlueprint display_info;
     display_info.name_ = json.value("name", "Unknown");

@@ -1,3 +1,16 @@
+/**
+ * @file iaudio_player.h
+ * @brief 定义音频播放器接口 IAudioPlayer 和空实现 NullAudioPlayer。
+ *
+ * @details
+ * 该文件定义了音频系统的核心接口，采用策略模式允许不同的音频后端实现。
+ * IAudioPlayer 接口提供了音量控制、音效播放、音乐播放等功能。
+ * NullAudioPlayer 是一个空对象模式实现，用于避免空指针检查。
+ *
+ * @see engine::audio::AudioPlayer 具体实现类
+ * @see engine::audio::AudioLocator 服务定位器
+ */
+
 #pragma once
 #include <string>
 #include <string_view>
@@ -7,7 +20,16 @@
 namespace engine::audio {
 
 	/**
+	 * @class IAudioPlayer
 	 * @brief 音频播放器接口，定义了音频播放和管理的核心方法。
+	 *
+	 * @details
+	 * 该接口定义了所有音频播放器必须实现的功能，包括：
+	 * - 音量控制（主音量、音效音量、音乐音量）
+	 * - 音效播放（普通和空间化）
+	 * - 背景音乐播放
+	 *
+	 * 使用资源ID的版本支持资源管理系统的集成。
 	 */
 	class IAudioPlayer {
 	public:

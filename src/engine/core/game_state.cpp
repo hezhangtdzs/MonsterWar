@@ -1,12 +1,10 @@
+/**
+ * @file game_state.cpp
+ * @brief GameState 类的实现，负责管理游戏的状态和窗口信息。
+ */
+
 #include "game_state.h"
 #include <spdlog/spdlog.h>
-
-/**
- * @brief 游戏状态管理类
- * 
- * 负责管理游戏的当前状态（如运行中、暂停、游戏结束）以及窗口相关的尺寸设置。
- * 提供了获取和设置游戏状态、窗口尺寸和逻辑尺寸的方法。
- */
 
 /**
  * @brief GameState 构造函数
@@ -22,8 +20,12 @@ engine::core::GameState::GameState(SDL_Renderer *renderer, SDL_Window *window, G
         spdlog::error("GameState 初始化失败，renderer 或 window 为空！");
         return;
     }
+    spdlog::info("GameState initialized with state: {}", static_cast<int>(initial_state));
 }
 
+/**
+ * @brief GameState 析构函数
+ */
 engine::core::GameState::~GameState() = default;
 
 /**
@@ -84,7 +86,7 @@ bool engine::core::GameState::isGameOver() const
 /**
  * @brief 获取窗口尺寸
  * 
- * @return 窗口尺寸的 glm::vec2 表示
+ * @return 窗口尺寸的 glm::vec2 表示（宽度和高度）
  */
 glm::vec2 engine::core::GameState::getWindowSize() const
 {
@@ -96,33 +98,35 @@ glm::vec2 engine::core::GameState::getWindowSize() const
 /**
  * @brief 设置窗口尺寸
  * 
- * @param size 要设置的窗口尺寸
+ * @param size 要设置的窗口尺寸（宽度和高度）
  */
 void engine::core::GameState::setWindowSize(glm::vec2 size)
 {
     SDL_SetWindowSize(window_, static_cast<int>(size.x), static_cast<int>(size.y));
+    spdlog::info("Window size set to: {}x{}", static_cast<int>(size.x), static_cast<int>(size.y));
 }
 
 /**
  * @brief 获取窗口逻辑尺寸
  * 
- * @return 窗口逻辑尺寸的 glm::vec2 表示
+ * @return 窗口逻辑尺寸的 glm::vec2 表示（宽度和高度）
  */
 glm::vec2 engine::core::GameState::getWindowLogicalSize() const
 {
     int width, height;
-    SDL_GetRenderLogicalPresentation(renderer_, &width, &height,NULL);
+    SDL_GetRenderLogicalPresentation(renderer_, &width, &height, NULL);
     return glm::vec2(static_cast<float>(width), static_cast<float>(height));
 }
 
 /**
  * @brief 设置窗口逻辑尺寸
  * 
- * @param size 要设置的逻辑尺寸
+ * @param size 要设置的逻辑尺寸（宽度和高度）
  */
 void engine::core::GameState::setWindowLogicalSize(glm::vec2 size)
 {
     int width = static_cast<int>(size.x);
     int height = static_cast<int>(size.y);
-    SDL_SetRenderLogicalPresentation(renderer_, width, height,SDL_LOGICAL_PRESENTATION_LETTERBOX);
+    SDL_SetRenderLogicalPresentation(renderer_, width, height, SDL_LOGICAL_PRESENTATION_LETTERBOX);
+    spdlog::info("Window logical size set to: {}x{}", width, height);
 }

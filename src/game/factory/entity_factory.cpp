@@ -1,3 +1,23 @@
+/**
+ * @file entity_factory.cpp
+ * @brief EntityFactory 类的实现，负责根据蓝图创建游戏实体。
+ * 
+ * @details
+ * 本文件实现了 EntityFactory 类的所有方法，包括：
+ * - 构造函数
+ * - 创建敌人单位的主方法
+ * - 各种组件装配辅助方法
+ * 
+ * EntityFactory 是游戏工厂系统的核心，实现了数据驱动的实体创建：
+ * - 从 BlueprintManager 获取蓝图数据
+ * - 按顺序装配各种组件
+ * - 根据蓝图数据设置组件属性
+ * - 处理特殊情况（如朝向、攻击类型）
+ * 
+ * @see game::factory::EntityFactory 实体工厂类定义
+ * @see game::factory::BlueprintManager 提供蓝图数据的管理器
+ */
+
 #include "entity_factory.h"
 #include "../component/stats_component.h"
 #include "../component/class_name_component.h"
@@ -14,10 +34,51 @@
 
 namespace game::factory {
 
+/**
+ * @brief EntityFactory 构造函数
+ * @param registry EnTT 注册表引用，用于创建和管理实体
+ * @param blueprint_manager 蓝图管理器引用，用于获取实体蓝图数据
+ */
 EntityFactory::EntityFactory(entt::registry& registry, const BlueprintManager& blueprint_manager)
     : registry_(registry), blueprint_manager_(blueprint_manager) {
+    spdlog::info("EntityFactory initialized");
 }
 
+/**
+ * @brief 创建敌人单位
+ * @param class_id 敌人类型ID（使用 entt::hashed_string 生成，如 "wolf"_hs）
+ * @param position 初始位置
+ * @param target_waypoint_id 目标路径点ID
+ * @param level 等级（默认为1）
+ * @param rarity 稀有度（默认为1）
+ * @return 创建的实体句柄
+ * 
+ * @details
+ * 该方法实现了敌人实体的完整创建流程：
+ * 1. 检查蓝图是否存在
+ * 2. 创建新实体
+ * 3. 按顺序装配各种组件：
+ *    - TransformComponent（位置）
+ *    - VelocityComponent（速度）
+ *    - SpriteComponent（外观）
+ *    - AnimationComponent（动画）
+ *    - AudioComponent（音效）
+ *    - StatsComponent（属性）
+ *    - EnemyComponent（敌人特定属性）
+ *    - ClassNameComponent（类型标识）
+ *    - RenderComponent（渲染排序）
+ * 4. 根据蓝图数据添加标签（朝向、攻击类型）
+ * 5. 记录创建结果
+ * 
+ * @par 组件装配顺序
+ * 组件装配顺序很重要，因为某些组件可能依赖于其他组件的数据。
+ * 本方法按照从基础到特定的顺序装配组件：
+ * 1. 变换和运动组件
+ * 2. 视觉和动画组件
+ * 3. 音频和统计组件
+ * 4. 敌人特定组件
+ * 5. 类型和渲染组件
+ */
 entt::entity EntityFactory::createEnemyUnit(entt::id_type class_id,
                                             const glm::vec2& position,
                                             int target_waypoint_id,
@@ -65,14 +126,31 @@ entt::entity EntityFactory::createEnemyUnit(entt::id_type class_id,
     return entity;
 }
 
+/**
+ * @brief 添加变换组件
+ * @param entity 目标实体
+ * @param position 初始位置
+ */
 void EntityFactory::addTransformComponent(entt::entity entity, const glm::vec2& position) {
     registry_.emplace<engine::component::TransformComponent>(entity, position);
 }
 
+/**
+ * @brief 添加速度组件
+ * @param entity 目标实体
+ * 
+ * @details
+ * 初始速度设置为 (0.0f, 0.0f)，敌人的实际速度将由 FollowPathSystem 根据路径计算。
+ */
 void EntityFactory::addVelocityComponent(entt::entity entity) {
     registry_.emplace<engine::component::VelocityComponent>(entity, glm::vec2(0.0f, 0.0f));
 }
 
+/**
+ * @brief 添加精灵组件
+ * @param entity 目标实体
+ * @param sprite 精灵蓝图数据
+ */
 void EntityFactory::addSpriteComponent(entt::entity entity, const data::SpriteBlueprint& sprite) {
     spdlog::debug("创建SpriteComponent: path={}, src_rect=[{},{},{},{}], size=[{},{}], offset=[{},{}]",
                   sprite.path_, sprite.src_rect_.position.x, sprite.src_rect_.position.y,
@@ -83,6 +161,13 @@ void EntityFactory::addSpriteComponent(entt::entity entity, const data::SpriteBl
     registry_.emplace<engine::component::SpriteComponent>(entity, std::move(sprite_data), sprite.size_, sprite.offset_);
 }
 
+/**
+ * @brief 添加动画组件
+ * @param entity 目标实体
+ * @param animations 动画蓝图映射
+ * @param sprite 精灵蓝图数据（用于计算帧大小）
+ * @param default_anim_id 默认动画ID
+ */
 void EntityFactory::addAnimationComponent(entt::entity entity,
                                           const std::unordered_map<entt::id_type, data::AnimationBlueprint>& animations,
                                           const data::SpriteBlueprint& sprite,
@@ -113,12 +198,28 @@ void EntityFactory::addAnimationComponent(entt::entity entity,
     registry_.emplace<engine::component::AnimationComponent>(entity, std::move(anim_map), default_anim_id);
 }
 
+/**
+ * @brief 添加音频组件
+ * @param entity 目标实体
+ * @param sounds 音效蓝图数据
+ */
 void EntityFactory::addAudioComponent(entt::entity entity, const data::SoundBlueprint& sounds) {
     engine::component::AudioComponent audio;
     audio.action_sounds_ = sounds.sounds_;
     registry_.emplace<engine::component::AudioComponent>(entity, std::move(audio));
 }
 
+/**
+ * @brief 添加统计组件
+ * @param entity 目标实体
+ * @param stats 统计蓝图数据
+ * @param level 等级
+ * @param rarity 稀有度
+ * 
+ * @details
+ * 该方法使用 statModify 函数根据等级和稀有度调整实体属性，
+ * 实现敌人强度的动态调整。
+ */
 void EntityFactory::addStatsComponent(entt::entity entity, const data::StatsBlueprint& stats, int level, int rarity) {
     game::component::StatsComponent stats_comp;
     stats_comp.max_hp_ = engine::utils::statModify(stats.hp_, level, rarity);
@@ -133,10 +234,25 @@ void EntityFactory::addStatsComponent(entt::entity entity, const data::StatsBlue
     registry_.emplace<game::component::StatsComponent>(entity, std::move(stats_comp));
 }
 
+/**
+ * @brief 添加敌人组件
+ * @param entity 目标实体
+ * @param enemy 敌人蓝图数据
+ * @param target_waypoint_id 目标路径点ID
+ */
 void EntityFactory::addEnemyComponent(entt::entity entity, const data::EnemyBlueprint& enemy, int target_waypoint_id) {
     registry_.emplace<game::component::EnemyComponent>(entity, target_waypoint_id, enemy.speed_);
 }
 
+/**
+ * @brief 添加渲染组件
+ * @param entity 目标实体
+ * @param layer_index 渲染图层索引
+ * 
+ * @details
+ * 渲染图层索引决定了实体的渲染顺序，较小的索引先渲染（在底层），
+ * 较大的索引后渲染（在上层）。
+ */
 void EntityFactory::addRenderComponent(entt::entity entity, int layer_index) {
     registry_.emplace<engine::component::RenderComponent>(entity, layer_index);
 }

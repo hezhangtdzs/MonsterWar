@@ -5,8 +5,10 @@
 #include "../../core/context.h"
 #include "../../input/input_manager.h"
 #include "../../resource/resource_id.h"
+#include <entt/core/hashed_string.hpp>
 
 namespace engine::ui::state {
+    using namespace entt::literals;
 
 /**
  * @brief 构造函数。
@@ -82,7 +84,7 @@ std::unique_ptr<UIState> HoverState::handleInput() {
         }
      
         // 检查鼠标是否按下
-        if (input_manager.isActionDown("MouseLeftClick")) {
+        if (input_manager.isActionDown("MouseLeftClick"_hs)) {
             // 鼠标按下，切换到按下状态
             return std::make_unique<PressedState>(interactive);
         }

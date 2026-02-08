@@ -23,6 +23,7 @@
 #include "game/data/waypoint_node.h"
 #include "game/defs/tags.h"
 #include "game/defs/event.h"
+#include "../component/blocked_by_component.h"
 #include <spdlog/spdlog.h>
 #include <glm/glm.hpp>
 
@@ -63,7 +64,9 @@ namespace game::system {
         auto view = registry.view<
             game::component::EnemyComponent,
             engine::component::TransformComponent,
-            engine::component::VelocityComponent>();
+            engine::component::VelocityComponent>(
+            entt::exclude<game::component::BlockedByComponent>
+            );
 
         // 遍历所有敌人实体
         for (auto entity : view) {

@@ -39,7 +39,7 @@ InputManager::InputManager(SDL_Renderer* sdl_renderer, entt::dispatcher* dispatc
  */
 void InputManager::Update()
 {
-	for (auto& [state_name, state] : action_states_) {
+	for (auto& [action_id, state] : action_states_) {
 		if (state == ActionState::PRESSED) {
 			state = ActionState::HELD;
 		}
@@ -52,9 +52,9 @@ void InputManager::Update()
 		processEvent(event);
 	}
 	// 触发对应动作的实体响应
-	for (auto& [action_name, state] : action_states_) {
+	for (auto& [action_id, state] : action_states_) {
 		if(state != ActionState::INACTIVE) {
-			if(auto it = action_entities_.find(action_name); it != action_entities_.end()) {
+			if(auto it = action_entities_.find(action_id); it != action_entities_.end()) {
 				it->second.at(static_cast<size_t>(state)).collect([](bool result){ 
 					return result;
 				});
@@ -67,32 +67,32 @@ void InputManager::quit() {
     dispatcher_->trigger<engine::utils::QuitEvent>();
 }
 
-entt::sink<entt::sigh<bool()>> InputManager::onAction(const std::string &action_name, ActionState state)
+entt::sink<entt::sigh<bool()>> InputManager::onAction(entt::id_type action_id, ActionState state)
 {
-	if (action_states_.find(action_name) == action_states_.end()) {
-		spdlog::warn("输入管理器: 动作 '{}' 未在配置中定义, 绑定的事件将永远不会被触发。请检查 config.json 中的拼写。", action_name);
+	if (action_states_.find(action_id) == action_states_.end()) {
+		spdlog::warn("输入管理器: 动作 ID '{}' 未在配置中定义, 绑定的事件将永远不会被触发。请检查 config.json 中的拼写。", action_id);
 	}
 
 	size_t state_idx = static_cast<size_t>(state);
 	if (state_idx >= 3) {
-		spdlog::error("输入管理器: 尝试为无效的状态 ({}) 绑定动作 '{}'。", state_idx, action_name);
+		spdlog::error("输入管理器: 尝试为无效的状态 ({}) 绑定动作 ID '{}'。", state_idx, action_id);
 		throw std::out_of_range("输入管理器: ActionState 索引超出范围");
 	}
 
-	return action_entities_[action_name].at(state_idx);
+	return action_entities_[action_id].at(state_idx);
 }
 
 /**
  * @brief 检查动作是否处于按下状态（包括刚按下和持续按下）
  *
- * @param action_name 动作名称
+ * @param action_id 动作ID
  * @return 是否按下
  * @details 检查指定动作是否处于按下状态，包括刚按下和持续按下的情况
  */
-bool InputManager::isActionDown(const std::string& action_name) const
+bool InputManager::isActionDown(entt::id_type action_id) const
 {
-	if (auto it = action_states_.find(action_name); it == action_states_.end()) {
-		spdlog::warn("输入映射警告: 未找到动作 '{}'.", action_name);
+	if (auto it = action_states_.find(action_id); it == action_states_.end()) {
+		spdlog::warn("输入映射警告: 未找到动作 ID '{}'.", action_id);
 		return false;
 	}else return it->second == ActionState::HELD || it->second == ActionState::PRESSED;
 }
@@ -100,14 +100,14 @@ bool InputManager::isActionDown(const std::string& action_name) const
 /**
  * @brief 检查动作是否在本帧被按下
  * 
- * @param action_name 动作名称
+ * @param action_id 动作ID
  * @return 是否刚刚按下
  * @details 检查指定动作是否在本帧刚刚被按下
  */
-bool InputManager::isActionPressed(const std::string& action_name) const
+bool InputManager::isActionPressed(entt::id_type action_id) const
 {
-	if (auto it = action_states_.find(action_name); it == action_states_.end()) {
-		spdlog::warn("输入映射警告: 未找到动作 '{}'.", action_name);
+	if (auto it = action_states_.find(action_id); it == action_states_.end()) {
+		spdlog::warn("输入映射警告: 未找到动作 ID '{}'.", action_id);
 		return false;
 	}else return it->second == ActionState::PRESSED;
 
@@ -116,14 +116,14 @@ bool InputManager::isActionPressed(const std::string& action_name) const
 /**
  * @brief 检查动作是否在本帧被释放
  * 
- * @param action_name 动作名称
+ * @param action_id 动作ID
  * @return 是否刚刚释放
  * @details 检查指定动作是否在本帧刚刚被释放
  */
-bool InputManager::isActionReleased(const std::string& action_name) const
+bool InputManager::isActionReleased(entt::id_type action_id) const
 {
-	if (auto it = action_states_.find(action_name); it == action_states_.end()) {
-		spdlog::warn("输入映射警告: 未找到动作 '{}'.", action_name);
+	if (auto it = action_states_.find(action_id); it == action_states_.end()) {
+		spdlog::warn("输入映射警告: 未找到动作 ID '{}'.", action_id);
 		return false;
 	}
 	else return it->second == ActionState::RELEASED;
@@ -171,9 +171,9 @@ void InputManager::processEvent(const SDL_Event& event)
 			return;
 		}
 		else {
-			const std::vector<std::string>& actions = it->second;
-			for (const std::string& action_name : actions) {
-				updateActionStates(action_name, is_down, is_repeat);
+			const std::vector<entt::id_type>& actions = it->second;
+			for (entt::id_type action_id : actions) {
+				updateActionStates(action_id, is_down, is_repeat);
 			}
 		}
 		break;
@@ -187,9 +187,9 @@ void InputManager::processEvent(const SDL_Event& event)
 			return;
 		}
 		else {
-			const std::vector<std::string>& actions = it->second;
-			for (const std::string& action_name : actions) {
-				updateActionStates(action_name, is_down, false);
+			const std::vector<entt::id_type>& actions = it->second;
+			for (entt::id_type action_id : actions) {
+				updateActionStates(action_id, is_down, false);
 			}
 		}
 		// 计算逻辑渲染坐标系下的鼠标位置
@@ -237,18 +237,19 @@ void InputManager::initializeMapFromConfig(const engine::core::Config* config)
 	}
 
 	for (const auto& [action_name, key_names] : actions_to_keyname_) {
-		action_states_[action_name] = ActionState::INACTIVE;
-		spdlog::trace("映射动作: {}", action_name);
+		entt::id_type action_id = entt::hashed_string(action_name.c_str());
+		action_states_[action_id] = ActionState::INACTIVE;
+		spdlog::trace("映射动作: {} (ID: {})", action_name, action_id);
 
 		for (const std::string& key_name : key_names) {
 			SDL_Scancode scancode = stringToScancode(key_name);
 			Uint32 mouse_button = stringToMouseButton(key_name);
 			if (scancode != SDL_SCANCODE_UNKNOWN) {      // 如果scancode有效,则将action添加到scancode_to_actions_map_中
-				input_to_action_[scancode].push_back(action_name);
+				input_to_action_[scancode].push_back(action_id);
 				spdlog::trace("  映射按键: {} (Scancode: {}) 到动作: {}", key_name, static_cast<int>(scancode), action_name);
 			}
 			else if (mouse_button != 0) {             // 如果鼠标按钮有效,则将action添加到mouse_button_to_actions_map_中
-				input_to_action_[mouse_button].push_back(action_name);
+				input_to_action_[mouse_button].push_back(action_id);
 				spdlog::trace("  映射鼠标按钮: {} (Button ID: {}) 到动作: {}", key_name, static_cast<int>(mouse_button), action_name);
 				// else if: 未来可添加其它输入类型 ...
 			}
@@ -263,31 +264,30 @@ void InputManager::initializeMapFromConfig(const engine::core::Config* config)
 /**
  * @brief 更新特定动作的状态
  * 
- * @param action_name 动作名
+ * @param action_id 动作ID
  * @param is_input_active 输入是否处于激活状态（按下）
  * @param is_repeat_event 是否为 SDL 的按键重复事件
  * @details 根据输入状态更新动作的状态，处理按键重复事件
  */
-void InputManager::updateActionStates(const std::string& action_name, bool is_input_active, bool is_repeat_event)
+void InputManager::updateActionStates(entt::id_type action_id, bool is_input_active, bool is_repeat_event)
 {
-	if (auto it = action_states_.find(action_name); it == action_states_.end()) {
-		spdlog::warn("输入映射警告: 未找到动作 '{}'.", action_name);
-		return;
-	}
-	else {
-		if (is_input_active) {
-			if (is_repeat_event) {
-				it->second = ActionState::HELD;
-			}
-			else {
-				it->second = ActionState::PRESSED;
-			}
-		}
-		else {
-			it->second = ActionState::RELEASED;
-		}	
-	}
+    auto it = action_states_.find(action_id);
+    if (it == action_states_.end()) {
+        spdlog::warn("输入映射警告: 未找到动作 ID '{}'.", action_id);
+        return;
+    }
 
+    if (is_input_active) {
+        if (is_repeat_event) {
+            it->second = ActionState::HELD;
+        }
+        else {
+            it->second = ActionState::PRESSED;
+        }
+    }
+    else {
+        it->second = ActionState::RELEASED;
+    }
 }
 
 /**

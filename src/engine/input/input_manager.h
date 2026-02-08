@@ -11,6 +11,7 @@
 #include <vector>
 #include <entt/entt.hpp>
 #include <variant>
+#include <entt/core/hashed_string.hpp>
 
 namespace engine::core
 {
@@ -28,7 +29,6 @@ namespace engine::input
 	 * @brief 动作的状态枚举
 	 */
 	enum class ActionState {
-		          ///< 动作未激活
 		PRESSED, ///< 动作在本帧刚刚被按下
 		HELD,          ///< 动作被持续按下
 		RELEASED, ///< 动作在本帧刚刚被释放
@@ -54,20 +54,20 @@ namespace engine::input
 		 * 这些信号槽用于注册实体对特定动作事件的响应。
 		 * @see entt::sigh
 		 */
-		std::unordered_map<std::string,std::array<entt::sigh<bool()>,3>> action_entities_; ///< 动作对应的实体列表
+		std::unordered_map<entt::id_type,std::array<entt::sigh<bool()>,3>> action_entities_; ///< 动作对应的实体列表
 
 		/**
 		 * @brief 输入映射表。
 		 * 键可以是 SDL_Scancode (键盘) 或 Uint32 (鼠标按钮)。
 		 * 值是关联到该输入的动作名称列表。
 		 */
-		std::unordered_map<std::variant<SDL_Scancode, Uint32>, std::vector<std::string>> input_to_action_;
+		std::unordered_map<std::variant<SDL_Scancode, Uint32>, std::vector<entt::id_type>> input_to_action_;
 		
 
 		/**
 		 * @brief 动作当前的状态表
 		 */
-		std::unordered_map<std::string, ActionState> action_states_;
+		std::unordered_map<entt::id_type, ActionState> action_states_;
 
 		glm::vec2 logical_mouse_position_; ///< 逻辑渲染坐标系下的鼠标位置
 		glm::vec2 mouse_position_; ///< 窗口坐标系下的鼠标位置
@@ -88,32 +88,32 @@ namespace engine::input
 		/**
 		 * @brief 为特定动作注册实体响应函数
 		 * 
-		 * @param action_name 动作名称
+		 * @param action_id 动作ID (entt::hashed_string)
 		 * @param state 动作状态（按下、持续按下或释放）
 		 * @return 实体响应函数的信号槽
 		 */
-		entt::sink<entt::sigh<bool()>> onAction(const std::string& action_name, ActionState state = ActionState::PRESSED);
+		entt::sink<entt::sigh<bool()>> onAction(entt::id_type action_id, ActionState state = ActionState::PRESSED);
 
 		/**
 		 * @brief 检查动作是否处于按下状态（包括刚按下和持续按下）
-		 * @param action_name 动作名称
+		 * @param action_id 动作ID
 		 * @return 是否按下
 		 */
-		bool isActionDown(const std::string& action_name) const;
+		bool isActionDown(entt::id_type action_id) const;
 
 		/**
 		 * @brief 检查动作是否在本帧被按下
-		 * @param action_name 动作名称
+		 * @param action_id 动作ID
 		 * @return 是否刚刚按下
 		 */
-		bool isActionPressed(const std::string& action_name) const;
+		bool isActionPressed(entt::id_type action_id) const;
 
 		/**
 		 * @brief 检查动作是否在本帧被释放
-		 * @param action_name 动作名称
+		 * @param action_id 动作ID
 		 * @return 是否刚刚释放
 		 */
-		bool isActionReleased(const std::string& action_name) const;
+		bool isActionReleased(entt::id_type action_id) const;
 
 		/**
 		 * @brief 获取当前鼠标在窗口坐标系下的位置
@@ -145,11 +145,11 @@ namespace engine::input
 
 		/**
 		 * @brief 更新特定动作的状态
-		 * @param action_name 动作名
+		 * @param action_id 动作ID
 		 * @param is_input_active 输入是否处于激活状态（按下）
 		 * @param is_repeat_event 是否为 SDL 的按键重复事件
 		 */
-		void updateActionStates(const std::string& action_name,bool is_input_active,bool is_repeat_event);
+		void updateActionStates(entt::id_type action_id,bool is_input_active,bool is_repeat_event);
 
 		/**
 		 * @brief 将字符串键名转换为 SDL_Scancode

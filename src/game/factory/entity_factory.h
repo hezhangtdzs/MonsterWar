@@ -38,6 +38,18 @@ public:
                                  int target_waypoint_id,
                                  int level = 1,
                                  int rarity = 1);
+    /**
+     * @brief 创建玩家单位
+     * @param class_id 玩家类型ID（使用 entt::hashed_string 生成，如 "archer"_hs）
+     * @param position 初始位置
+     * @param level 等级（默认为1）
+     * @param rarity 稀有度（默认为1）
+     * @return 创建的实体句柄
+     */
+    entt::entity createPlayerUnit(entt::id_type class_id,
+                                 const glm::vec2& position,
+                                 int level = 1,
+                                 int rarity = 1);
 
 private:
     entt::registry& registry_;
@@ -53,6 +65,7 @@ private:
     void addAudioComponent(entt::entity entity, const data::SoundBlueprint& sounds);
     void addStatsComponent(entt::entity entity, const data::StatsBlueprint& stats, int level, int rarity);
     void addEnemyComponent(entt::entity entity, const data::EnemyBlueprint& enemy, int target_waypoint_id);
+    void addPlayerComponent(entt::entity entity, const data::PlayerBlueprint& player, int rarity);
     void addRenderComponent(entt::entity entity, int layer_index);
     void addVelocityComponent(entt::entity entity);
 };

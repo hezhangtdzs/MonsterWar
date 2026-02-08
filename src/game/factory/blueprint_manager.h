@@ -33,6 +33,13 @@ public:
     [[nodiscard]] bool loadEnemyClassBlueprints(std::string_view enemy_json_path);
 
     /**
+     * @brief 从 JSON 文件加载玩家蓝图
+     * @param player_json_path 玩家数据 JSON 文件路径
+     * @return 加载成功返回 true
+     */
+    [[nodiscard]] bool loadPlayerClassBlueprints(std::string_view player_json_path);
+
+    /**
      * @brief 获取指定类型的敌人蓝图
      * @param id 敌人类型ID（entt::hashed_string 值）
      * @return 敌人蓝图的常量引用
@@ -41,15 +48,31 @@ public:
     const data::EnemyClassBlueprint& getEnemyClassBlueprint(entt::id_type id) const;
 
     /**
+     * @brief 获取指定类型的玩家蓝图
+     * @param id 玩家类型ID（entt::hashed_string 值）
+     * @return 玩家蓝图的常量引用
+     * @throws std::out_of_range 如果蓝图不存在
+     */
+    const data::PlayerClassBlueprint& getPlayerClassBlueprint(entt::id_type id) const;
+
+    /**
      * @brief 检查是否存在指定类型的蓝图
      * @param id 敌人类型ID
      * @return 存在返回 true
      */
     bool hasEnemyClassBlueprint(entt::id_type id) const;
 
+    /**
+     * @brief 检查是否存在指定类型的玩家蓝图
+     * @param id 玩家类型ID
+     * @return 存在返回 true
+     */
+    bool hasPlayerClassBlueprint(entt::id_type id) const;
+
 private:
     engine::resource::ResourceManager& resource_manager_;
     std::unordered_map<entt::id_type, data::EnemyClassBlueprint> enemy_class_blueprints_;
+    std::unordered_map<entt::id_type, data::PlayerClassBlueprint> player_class_blueprints_;
 
     // 解析辅助函数
     [[nodiscard]] data::StatsBlueprint parseStats(const nlohmann::json& json) const;
@@ -57,6 +80,7 @@ private:
     [[nodiscard]] std::unordered_map<entt::id_type, data::AnimationBlueprint> parseAnimationsMap(const nlohmann::json& json) const;
     [[nodiscard]] data::SoundBlueprint parseSound(const nlohmann::json& json);
     [[nodiscard]] data::EnemyBlueprint parseEnemy(const nlohmann::json& json) const;
+    [[nodiscard]] data::PlayerBlueprint parsePlayer(const nlohmann::json& json) const;
     [[nodiscard]] data::DisplayInfoBlueprint parseDisplayInfo(const nlohmann::json& json) const;
 };
 

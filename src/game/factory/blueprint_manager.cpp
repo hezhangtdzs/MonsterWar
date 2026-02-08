@@ -104,6 +104,59 @@ bool BlueprintManager::loadEnemyClassBlueprints(std::string_view enemy_json_path
 }
 
 /**
+ * @brief 从 JSON 文件加载玩家蓝图
+ * @param player_json_path 玩家数据 JSON 文件路径
+ * @return 加载成功返回 true
+ */
+bool BlueprintManager::loadPlayerClassBlueprints(std::string_view player_json_path) {
+    std::string path_str(player_json_path);
+    std::ifstream input_file(path_str);
+    if (!input_file.is_open()) {
+        spdlog::error("无法打开玩家蓝图文件: {}", player_json_path);
+        return false;
+    }
+
+    nlohmann::json json_data;
+    try {
+        input_file >> json_data;
+    } catch (const nlohmann::json::exception& e) {
+        spdlog::error("解析玩家蓝图 JSON 失败: {}", e.what());
+        return false;
+    }
+
+    // 遍历 JSON 中的每个玩家单位类型
+    for (auto& [class_name, data_json] : json_data.items()) {
+        entt::id_type class_id = entt::hashed_string(class_name.c_str());
+
+        // 解析各个子蓝图
+        data::StatsBlueprint stats = parseStats(data_json);
+        data::SpriteBlueprint sprite = parseSprite(data_json);
+        auto animations = parseAnimationsMap(data_json);
+        data::SoundBlueprint sounds = parseSound(data_json);
+        data::PlayerBlueprint player = parsePlayer(data_json);
+        data::DisplayInfoBlueprint display_info = parseDisplayInfo(data_json);
+
+        // 组装完整蓝图
+        data::PlayerClassBlueprint blueprint;
+        blueprint.class_id_ = class_id;
+        blueprint.class_name_ = class_name;
+        blueprint.stats_ = stats;
+        blueprint.player_ = player;
+        blueprint.sounds_ = sounds;
+        blueprint.sprite_ = sprite;
+        blueprint.display_info_ = display_info;
+        blueprint.animations_ = std::move(animations);
+
+        // 存入映射表
+        player_class_blueprints_.emplace(class_id, std::move(blueprint));
+        spdlog::info("已加载玩家蓝图: {} (ID: {})", class_name, class_id);
+    }
+
+    spdlog::info("成功加载 {} 个玩家蓝图", player_class_blueprints_.size());
+    return true;
+}
+
+/**
  * @brief 获取指定类型的敌人蓝图
  * @param id 敌人类型ID（entt::hashed_string 值）
  * @return 敌人蓝图的常量引用
@@ -114,12 +167,31 @@ const data::EnemyClassBlueprint& BlueprintManager::getEnemyClassBlueprint(entt::
 }
 
 /**
+ * @brief 获取指定类型的玩家蓝图
+ * @param id 玩家类型ID（entt::hashed_string 值）
+ * @return 玩家蓝图的常量引用
+ * @throws std::out_of_range 如果蓝图不存在
+ */
+const data::PlayerClassBlueprint& BlueprintManager::getPlayerClassBlueprint(entt::id_type id) const {
+    return player_class_blueprints_.at(id);
+}
+
+/**
  * @brief 检查是否存在指定类型的蓝图
  * @param id 敌人类型ID
  * @return 存在返回 true
  */
 bool BlueprintManager::hasEnemyClassBlueprint(entt::id_type id) const {
     return enemy_class_blueprints_.find(id) != enemy_class_blueprints_.end();
+}
+
+/**
+ * @brief 检查是否存在指定类型的玩家蓝图
+ * @param id 玩家类型ID
+ * @return 存在返回 true
+ */
+bool BlueprintManager::hasPlayerClassBlueprint(entt::id_type id) const {
+    return player_class_blueprints_.find(id) != player_class_blueprints_.end();
 }
 
 /**
@@ -229,6 +301,28 @@ data::EnemyBlueprint BlueprintManager::parseEnemy(const nlohmann::json& json) co
     enemy.ranged_ = json.value("ranged", false);
     enemy.speed_ = json.value("speed", 100.0f);
     return enemy;
+}
+
+/**
+ * @brief 解析玩家特定属性蓝图
+ * @param json JSON 数据
+ * @return 解析后的玩家蓝图
+ */
+data::PlayerBlueprint BlueprintManager::parsePlayer(const nlohmann::json& json) const {
+    data::PlayerBlueprint player;
+    player.type_ = json.value("type", "unknown") == "melee" ? game::defs::PlayerType::MELEE :
+                    (json.value("type", "unknown") == "ranged" ? game::defs::PlayerType::RANGED : 
+                    game::defs::PlayerType::UNKNOWN);
+    player.is_healer_ = json.value("healer", false);
+    player.block_ = json.value("block", 0);
+    player.cost_ = json.value("cost", 0);
+    if (json.contains("skill")) {
+        player.skill_id_ = entt::hashed_string(json["skill"].get<std::string>().c_str()).value();
+    }
+    if (json.contains("projectile")) {
+        player.projectile_id_ = entt::hashed_string(json["projectile"].get<std::string>().c_str()).value();
+    }
+    return player;
 }
 
 /**

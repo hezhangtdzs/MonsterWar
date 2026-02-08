@@ -98,5 +98,13 @@ struct FColor
 inline float statModify(float base, int level = 1, int rarity = 1) {
     return base * (0.95f + 0.05f * level) * (0.9f + 0.1f * rarity);
 }
-
+/**
+ * @brief 计算二维点之间的平方距离
+ * @param a 第一个点
+ * @param b 第二个点
+ * @return 平方距离
+ */
+inline float distanceSquared(const glm::vec2& a, const glm::vec2& b) {
+    return (a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y);
+}
 } // namespace engine::utils

@@ -92,5 +92,18 @@ struct MeleeUnitTag {};         ///< 近战单位标签
  * - 实现远程单位的特殊能力或行为
  */
 struct RangedUnitTag {};        ///< 远程单位标签
+/**
+ * @struct HealerTag
+ * @brief 治疗单位标签。
+ * 
+ * @details
+ * 标记实体为治疗单位。战斗系统可以根据此标签应用治疗特定的逻辑。
+ * 
+ * @par 用途
+ * - 区分治疗单位和其他类型单位的行为
+ * - 应用不同的技能和动画
+ * - 实现治疗单位的特殊能力或行为
+ */
+struct HealerTag {};        ///< 治疗单位标签
 
 }   // namespace game::defs

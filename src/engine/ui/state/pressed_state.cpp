@@ -5,8 +5,10 @@
 #include "../../core/context.h"
 #include "../../input/input_manager.h"
 #include "../../resource/resource_id.h"
+#include <entt/core/hashed_string.hpp>
 
 namespace engine::ui::state {
+    using namespace entt::literals;
 
 /**
  * @brief 构造函数。
@@ -77,7 +79,7 @@ std::unique_ptr<UIState> PressedState::handleInput() {
         glm::vec2 mouse_pos = input_manager.getLogicalMousePosition();
         
         // 检查鼠标是否释放
-        if (input_manager.isActionReleased("MouseLeftClick")) {
+        if (input_manager.isActionReleased("MouseLeftClick"_hs)) {
             // 鼠标释放，检查是否在按钮内
             if (interactive->containsPoint(mouse_pos)) {
                 // 鼠标在按钮内释放，触发点击事件

@@ -22,6 +22,8 @@
 #include "../component/stats_component.h"
 #include "../component/class_name_component.h"
 #include "../component/enemy_component.h"
+#include "../component/player_component.h"
+#include "../component/blocker_component.h"
 #include "../defs/tags.h"
 #include "../../engine/component/transform_component.h"
 #include "../../engine/component/sprite_component.h"
@@ -123,6 +125,61 @@ entt::entity EntityFactory::createEnemyUnit(entt::id_type class_id,
     }
 
     spdlog::info("创建敌人单位: {} (等级: {}, 稀有度: {})", blueprint.display_info_.name_, level, rarity);
+    return entity;
+}
+
+/**
+ * @brief 创建玩家单位
+ * @param class_id 玩家类型ID（使用 entt::hashed_string 生成，如 "archer"_hs）
+ * @param position 初始位置
+ * @param level 等级（默认为1）
+ * @param rarity 稀有度（默认为1）
+ * @return 创建的实体句柄
+ * 
+ * @details
+ * 该方法实现了玩家实体的完整创建流程：
+ * 1. 检查蓝图是否存在
+ * 2. 创建新实体
+ * 3. 按顺序装配各种组件
+ * 4. 记录创建结果
+ */
+entt::entity EntityFactory::createPlayerUnit(entt::id_type class_id,
+                                             const glm::vec2& position,
+                                             int level,
+                                             int rarity) {
+    // 检查蓝图是否存在
+    if (!blueprint_manager_.hasPlayerClassBlueprint(class_id)) {
+        spdlog::error("找不到玩家类型ID: {}", class_id);
+        return entt::null;
+    }
+
+    const auto& blueprint = blueprint_manager_.getPlayerClassBlueprint(class_id);
+
+    // 创建实体
+    entt::entity entity = registry_.create();
+
+    // 按顺序装配组件
+    addTransformComponent(entity, position);
+    addVelocityComponent(entity);
+    addSpriteComponent(entity, blueprint.sprite_);
+    // 玩家默认动画通常是 idle
+    addAnimationComponent(entity, blueprint.animations_, blueprint.sprite_, entt::hashed_string("idle"));
+    addAudioComponent(entity, blueprint.sounds_);
+    addStatsComponent(entity, blueprint.stats_, level, rarity);
+    addPlayerComponent(entity, blueprint.player_, rarity);
+
+    // 添加类名组件
+    registry_.emplace<game::component::ClassNameComponent>(entity, class_id, blueprint.display_info_.name_);
+
+    // 添加渲染组件
+    addRenderComponent(entity, 10);
+
+    // 根据朝向添加标签
+    if (!blueprint.sprite_.face_right_) {
+        registry_.emplace<game::defs::FaceLeftTag>(entity);
+    }
+
+    spdlog::info("创建玩家单位过程完成: {} (等级: {}, 稀有度: {})", blueprint.display_info_.name_, level, rarity);
     return entity;
 }
 
@@ -242,6 +299,20 @@ void EntityFactory::addStatsComponent(entt::entity entity, const data::StatsBlue
  */
 void EntityFactory::addEnemyComponent(entt::entity entity, const data::EnemyBlueprint& enemy, int target_waypoint_id) {
     registry_.emplace<game::component::EnemyComponent>(entity, target_waypoint_id, enemy.speed_);
+}
+
+void EntityFactory::addPlayerComponent(entt::entity entity, const data::PlayerBlueprint &player, int rarity)
+{
+    auto cost = static_cast<int>(std::round(player.cost_ * (0.9f + 0.1f * rarity)));
+    registry_.emplace<game::component::PlayerComponent>(entity, cost);
+    if(player.type_ == game::defs::PlayerType::MELEE) {
+        registry_.emplace<game::defs::MeleeUnitTag>(entity);
+        registry_.emplace<game::component::BlockerComponent>(entity, player.block_);
+    } else if(player.type_ == game::defs::PlayerType::RANGED) {
+        registry_.emplace<game::defs::RangedUnitTag>(entity);
+    } else if(player.is_healer_) {
+        registry_.emplace<game::defs::HealerTag>(entity);
+    }
 }
 
 /**

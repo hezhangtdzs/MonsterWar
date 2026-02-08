@@ -8,6 +8,7 @@
 
 #pragma once
 #include <memory>
+#include <entt/entity/entity.hpp>
 
 namespace engine::scene {
     class Scene;
@@ -53,6 +54,12 @@ namespace engine::utils {
      */
     struct ReplaceSceneEvent {
         std::unique_ptr<engine::scene::Scene> scene;
+    };
+    /// @brief 播放动画事件
+    struct PlayAnimationEvent {
+        entt::entity entity_{entt::null};           ///< @brief 目标实体
+        entt::id_type animation_id_{entt::null};    ///< @brief 动画ID
+        bool loop_{true};                           ///< @brief 是否循环
     };
 
     // 这里可以定义一些与事件处理相关的工具函数或类型别名

@@ -6,6 +6,7 @@
 #include <entt/entity/entity.hpp>
 #include <glm/vec2.hpp>
 #include "../../engine/utils/math.h"
+#include "../defs/constants.h"
 
 namespace game::data {
 
@@ -62,6 +63,19 @@ struct EnemyBlueprint {
 };
 
 /**
+ * @struct PlayerBlueprint
+ * @brief 玩家单位特性蓝图，存储玩家单位特有的属性
+ */
+struct PlayerBlueprint {
+    game::defs::PlayerType type_ = game::defs::PlayerType::UNKNOWN;
+    bool is_healer_ = false;
+    int block_ = 0;
+    int cost_ = 0;
+    entt::id_type skill_id_ = entt::null;
+    entt::id_type projectile_id_ = entt::null;
+};
+
+/**
  * @struct DisplayInfoBlueprint
  * @brief 显示信息蓝图，存储单位的名称和描述
  */
@@ -79,6 +93,21 @@ struct EnemyClassBlueprint {
     std::string class_name_;
     StatsBlueprint stats_;
     EnemyBlueprint enemy_;
+    SoundBlueprint sounds_;
+    SpriteBlueprint sprite_;
+    DisplayInfoBlueprint display_info_;
+    std::unordered_map<entt::id_type, AnimationBlueprint> animations_;
+};
+
+/**
+ * @struct PlayerClassBlueprint
+ * @brief 玩家单位类型完整蓝图，组合所有子蓝图
+ */
+struct PlayerClassBlueprint {
+    entt::id_type class_id_ = entt::null;
+    std::string class_name_;
+    StatsBlueprint stats_;
+    PlayerBlueprint player_;
     SoundBlueprint sounds_;
     SpriteBlueprint sprite_;
     DisplayInfoBlueprint display_info_;

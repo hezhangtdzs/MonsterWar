@@ -8,8 +8,76 @@ System 模块包含游戏的核心逻辑系统，负责处理寻路、实体清�
 |------|------|
 | [FollowPathSystem](#followpathsystem) | 寻路系统，控制敌人沿路径移动 |
 | [RemoveDeadSystem](#removedeadsystem) | 清理系统，删除标记死亡的实体 |
+| [BlockSystem](#blocksystem) | 阻挡系统，处理近战单位拦截敌人 |
+| [SetTargetSystem](#settargetsystem) | 锁定系统，为单位寻找攻击或治疗目标 |
+| [TimerSystem](#timersystem) | 计时系统，处理攻击冷却时间 |
+| [AttackStarterSystem](#attackstartersystem) | 启动系统，触发攻击动画和动作硬直 |
+| [AnimationStateSystem](#animationstatesystem) | 动画状态系统，处理动作结束后的逻辑转换 |
+| [OrientationSystem](#orientationsystem) | 朝向系统，根据目标或速度调整面朝方向 |
 
 ---
+
+## BlockSystem
+
+**文件**: `src/game/system/block_system.h`, `src/game/system/block_system.cpp`
+
+处理近战玩家单位（Blocker）对敌人的拦截。当距离小于 `BLOCK_RADIUS` 时建立阻挡关系。
+
+---
+
+## SetTargetSystem
+
+**文件**: `src/game/system/set_target_system.h`, `src/game/system/set_target_system.cpp`
+
+统一处理所有单位的目标锁定逻辑：
+1. **有效性检测**: 目标死亡或超出射程时移除 `TargetComponent`。
+2. **策略搜索**:
+   - **普通攻击单位**: 在射程内寻找最近的敌方目标。
+   - **治疗单位**: 通过 `InjuredTag` 寻找射程内血量百分比最低的友军。
+
+---
+
+## TimerSystem
+
+**文件**: `src/game/system/timer_system.h`, `src/game/system/timer_system.cpp`
+
+管理攻击冷却时间。累加 `atk_timer_`，并在计时结束后添加 `AttackReadyTag`，使实体进入待攻击状态。
+
+---
+
+## AttackStarterSystem
+
+**文件**: `src/game/system/attack_starter_system.h`, `src/game/system/attack_starter_system.cpp`
+
+游戏战斗循环的触发器。当单位具备 `AttackReadyTag` 且有有效目标（或被阻挡）时：
+- 发送播放攻击/治疗动画事件。
+- 为敌人添加 `ActionLockTag`（动作锁）。
+- 重置攻击计时器并移除就绪标签。
+
+---
+
+## AnimationStateSystem
+
+**文件**: `src/game/system/animation_state_system.h`, `src/game/system/animation_state_system.cpp`
+
+监听 `AnimationFinishedEvent`。负责处理攻击等非循环动画播放结束后的收尾工作：
+- 移除 `ActionLockTag`（解除硬直）。
+- 切换回 `idle` 或 `walk` 动画。
+
+---
+
+## OrientationSystem
+
+**文件**: `src/game/system/orientation_system.h`, `src/game/system/orientation_system.cpp`
+
+统一管理实体的翻转状态。优先级顺序：
+1. **锁定目标**: 面向当前攻击/治疗的目标。
+2. **阻挡关系**: 被阻挡的敌人面向阻挡者。
+3. **移动速度**: 面向当前移动的方向。
+
+---
+
+## FollowPathSystem
 
 ## FollowPathSystem
 

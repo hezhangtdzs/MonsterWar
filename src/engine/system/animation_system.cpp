@@ -1,8 +1,10 @@
 #include "animation_system.h"
 #include "../component/animation_component.h"
 #include "../component/sprite_component.h"
+#include "../utils/events.h"
 #include <entt/entity/registry.hpp>
 #include <entt/signal/dispatcher.hpp>
+#include <spdlog/spdlog.h>
 
 namespace engine::system {
 
@@ -52,6 +54,8 @@ void AnimationSystem::update(float dt) {
                 } else {
                     // 动画播放完毕且不循环，停在最后一帧
                     anim_component.current_frame_index_ = current_animation.frames_.size() - 1;
+                    // 发送动画播放结束事件
+                    dispatcher_.enqueue(engine::utils::AnimationFinishedEvent{entity, anim_component.current_animation_id_});
                 }
             }
         }
@@ -65,10 +69,18 @@ void AnimationSystem::update(float dt) {
 void AnimationSystem::onPlayAnimationEvent(const engine::utils::PlayAnimationEvent& event) {
     // 使用try_get方法来安全获取可能存在的组件。如果不存在则返回nullptr
     if (auto anim = registry_.try_get<engine::component::AnimationComponent>(event.entity_); anim) {
-        anim->current_animation_id_ = event.animation_id_;      // 替换动画ID
-        anim->current_frame_index_ = 0;
-        anim->current_time_ms_ = 0.0f;
-        anim->animations_.at(event.animation_id_).loop_ = event.loop_;
+        // 先检查动画是否存在，避免 .at() 导致的崩溃
+        if (anim->animations_.contains(event.animation_id_)) {
+            anim->current_animation_id_ = event.animation_id_;      // 替换动画ID
+            anim->current_frame_index_ = 0;
+            anim->current_time_ms_ = 0.0f;
+            anim->animations_.at(event.animation_id_).loop_ = event.loop_;
+        } else {
+            // 将 hashed_string 转换回字符串在日志里是不可能的（除非事先存了映射），
+            // 这里我们打印 ID 的 16 进制值方便调试。
+            spdlog::warn("尝试播放不存在的动画 ID: {:x}，实体 ID: {}", 
+                         event.animation_id_, entt::to_integral(event.entity_));
+        }
     }
 }
 

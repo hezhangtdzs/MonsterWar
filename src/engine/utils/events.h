@@ -62,5 +62,11 @@ namespace engine::utils {
         bool loop_{true};                           ///< @brief 是否循环
     };
 
+    /// @brief 动画播放结束事件
+    struct AnimationFinishedEvent {
+        entt::entity entity_{entt::null};           ///< @brief 目标实体
+        entt::id_type animation_id_{entt::null};    ///< @brief 播放完的动画ID
+    };
+
     // 这里可以定义一些与事件处理相关的工具函数或类型别名
 } // namespace engine::utils

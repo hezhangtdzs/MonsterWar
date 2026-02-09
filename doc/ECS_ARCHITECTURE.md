@@ -66,6 +66,8 @@ registry.emplace<TransformComponent>(entity, glm::vec2(100.0f, 100.0f));
 | VelocityComponent | 线速度 | `engine/component/velocity_component.h` |
 | SpriteComponent | 精灵渲染数据 | `engine/component/sprite_component.h` |
 | AnimationComponent | 动画状态和数据 | `engine/component/animation_component.h` |
+| TargetComponent | 锁定目标引用 | `game/component/target_component.h` |
+| StatsComponent | 战斗属性数据 | `game/component/stats_component.h` |
 
 ### 系统（System）
 
@@ -96,6 +98,11 @@ public:
 | MovementSystem | 更新实体位置 | VelocityComponent + TransformComponent | `engine/system/movement_system.h` |
 | RenderSystem | 渲染实体 | TransformComponent + SpriteComponent | `engine/system/render_system.h` |
 | AnimationSystem | 更新动画 | AnimationComponent + SpriteComponent | `engine/system/animation_system.h` |
+| SetTargetSystem | 锁定攻击/治疗目标 | StatsComponent + TargetComponent + Tags | `game/system/set_target_system.h` |
+| TimerSystem | 攻击冷却计时 | StatsComponent + AttackReadyTag | `game/system/timer_system.h` |
+| AttackStarterSystem | 触发攻击行为 | AttackReadyTag + TargetComponent + ActionLockTag | `game/system/attack_starter_system.h` |
+| AnimationStateSystem | 动作收尾逻辑 | ActionLockTag + AnimationFinishedEvent | `game/system/animation_state_system.h` |
+| OrientationSystem | 朝向状态同步 | TransformComponent + SpriteComponent + Target/Velocity | `game/system/orientation_system.h` |
 
 ## 项目中的 ECS 实现
 

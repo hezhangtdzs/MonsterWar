@@ -7,6 +7,13 @@
 #include "../system/followpath_system.h"
 #include "../system/remove_dead_system.h"
 #include "../system/block_system.h"
+#include "../system/set_target_system.h"
+#include "../system/timer_system.h"
+#include "../system/attack_starter_system.h"
+#include "../system/animation_state_system.h"
+#include "../system/orientation_system.h"
+#include "../defs/tags.h"
+#include "../component/stats_component.h"
 #include "../../engine/component/transform_component.h"
 #include "../../engine/component/velocity_component.h"
 #include "../../engine/component/sprite_component.h"
@@ -38,6 +45,11 @@ GameScene::GameScene(engine::core::Context& context)
     follow_path_system_ = std::make_unique<game::system::FollowPathSystem>();
     remove_dead_system_ = std::make_unique<game::system::RemoveDeadSystem>();
     block_system_ = std::make_unique<game::system::BlockSystem>();
+    set_target_system_ = std::make_unique<game::system::SetTargetSystem>();
+    timer_system_ = std::make_unique<game::system::TimerSystem>();
+    attack_starter_system_ = std::make_unique<game::system::AttackStarterSystem>();
+    animation_state_system_ = std::make_unique<game::system::AnimationStateSystem>(registry_, dispatcher);
+    orientation_system_ = std::make_unique<game::system::OrientationSystem>();
 
     spdlog::info("GameScene 构造完成");
 }
@@ -75,8 +87,17 @@ void GameScene::update(float delta_time) {
     // 注意系统更新的顺序
     follow_path_system_->update(registry_, dispatcher, waypoint_nodes_);
     block_system_->update(registry_, dispatcher);
+    
+    // 战斗循环
+    set_target_system_->update(registry_);
+    timer_system_->update(registry_, delta_time);
+    attack_starter_system_->update(registry_, dispatcher);
+
     movement_system_->update(registry_, delta_time);
     animation_system_->update(delta_time);
+    
+    // 视觉修正
+    orientation_system_->update(registry_);
     ysort_system_->update(registry_);   // 调用顺序要在MovementSystem之后
     Scene::update(delta_time);
 }
@@ -95,6 +116,7 @@ void GameScene::clean() {
     // 断开输入信号连接
     input_manager.onAction("mouse_right"_hs).disconnect<&GameScene::onCreateTestPlayerMelee>(this);
     input_manager.onAction("mouse_left"_hs).disconnect<&GameScene::onCreateTestPlayerRanged>(this);
+    input_manager.onAction("move_left"_hs).disconnect<&GameScene::onCreateTestPlayerHealer>(this);
     input_manager.onAction("pause"_hs).disconnect<&GameScene::onClearAllPlayers>(this);
     Scene::clean();
 }
@@ -125,6 +147,7 @@ bool GameScene::initInputConnections() {
     auto& input_manager = context_.getInputManager();
     input_manager.onAction("mouse_right"_hs).connect<&GameScene::onCreateTestPlayerMelee>(this);
     input_manager.onAction("mouse_left"_hs).connect<&GameScene::onCreateTestPlayerRanged>(this);
+    input_manager.onAction("move_left"_hs).connect<&GameScene::onCreateTestPlayerHealer>(this);
     input_manager.onAction("pause"_hs).connect<&GameScene::onClearAllPlayers>(this);
     return true;
 }
@@ -165,15 +188,36 @@ void GameScene::createTestEnemy() {
 
 bool GameScene::onCreateTestPlayerMelee() {
     auto position = context_.getInputManager().getLogicalMousePosition();
-    entity_factory_->createPlayerUnit("warrior"_hs, position);
+    auto entity = entity_factory_->createPlayerUnit("warrior"_hs, position);
+    
+    // 测试用：设为受伤并增加受伤标签
+    if (auto* stats = registry_.try_get<game::component::StatsComponent>(entity)) {
+        stats->hp_ = stats->max_hp_ / 2.0f;
+        registry_.emplace<game::defs::InjuredTag>(entity);
+    }
+
     spdlog::info("创建战士: 位置: {}, {}", position.x, position.y);
     return true;
 }
 
 bool GameScene::onCreateTestPlayerRanged() {
     auto position = context_.getInputManager().getLogicalMousePosition();
-    entity_factory_->createPlayerUnit("archer"_hs, position);
+    auto entity = entity_factory_->createPlayerUnit("archer"_hs, position);
+
+    // 测试用：设为受伤并增加受伤标签
+    if (auto* stats = registry_.try_get<game::component::StatsComponent>(entity)) {
+        stats->hp_ = stats->max_hp_ / 2.0f;
+        registry_.emplace<game::defs::InjuredTag>(entity);
+    }
+
     spdlog::info("创建弓箭手: 位置: {}, {}", position.x, position.y);
+    return true;
+}
+
+bool GameScene::onCreateTestPlayerHealer() {
+    auto position = context_.getInputManager().getLogicalMousePosition();
+    entity_factory_->createPlayerUnit("witch"_hs, position);
+    spdlog::info("创建治疗者: 位置: {}, {}", position.x, position.y);
     return true;
 }
 

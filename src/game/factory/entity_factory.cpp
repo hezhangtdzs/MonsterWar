@@ -305,12 +305,15 @@ void EntityFactory::addPlayerComponent(entt::entity entity, const data::PlayerBl
 {
     auto cost = static_cast<int>(std::round(player.cost_ * (0.9f + 0.1f * rarity)));
     registry_.emplace<game::component::PlayerComponent>(entity, cost);
+    
     if(player.type_ == game::defs::PlayerType::MELEE) {
         registry_.emplace<game::defs::MeleeUnitTag>(entity);
         registry_.emplace<game::component::BlockerComponent>(entity, player.block_);
     } else if(player.type_ == game::defs::PlayerType::RANGED) {
         registry_.emplace<game::defs::RangedUnitTag>(entity);
-    } else if(player.is_healer_) {
+    } 
+    
+    if(player.is_healer_) {
         registry_.emplace<game::defs::HealerTag>(entity);
     }
 }

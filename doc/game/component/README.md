@@ -9,8 +9,28 @@ Component 模块定义了游戏特有的 ECS 组件，用于描述游戏实体�
 | [EnemyComponent](#enemycomponent) | 敌人组件，存储寻路目标和移动速度 |
 | [StatsComponent](#statscomponent) | 战斗属性组件，存储生命值、攻击力等实时数值 |
 | [ClassNameComponent](#classnamecomponent) | 类名组件，标识实体的类型和蓝图来源 |
+| [TargetComponent](#targetcomponent) | 目标锁定组件，存储当前锁定的实体引用 |
+| [PlayerComponent](#playercomponent) | 玩家组件，存储放置消耗等属性 |
+| [BlockerComponent](#blockercomponent) | 阻挡者组件，存储最大阻挡数和当前阻挡数 |
+| [BlockedByComponent](#blockedbycomponent) | 被阻挡组件，存储阻挡者的实体引用 |
 
 ---
+
+## TargetComponent
+
+**文件**: `src/game/component/target_component.h`
+
+目标锁定组件，用于在实体之间建立“锁定”关系。它是自动寻敌、周期性攻击和定向治疗逻辑的基础。
+
+```cpp
+struct TargetComponent {
+    entt::entity entity_{entt::null};
+};
+```
+
+---
+
+## PlayerComponent
 
 ## StatsComponent
 

@@ -106,4 +106,35 @@ struct RangedUnitTag {};        ///< 远程单位标签
  */
 struct HealerTag {};        ///< 治疗单位标签
 
+/**
+ * @struct AttackReadyTag
+ * @brief 攻击准备就绪标签。
+ * 
+ * @details
+ * 当单位的攻击冷却结束，可以发起下一次攻击时，添加此标签。
+ * TimerSystem 负责计时并添加此标签，AttackStarterSystem 负责发起攻击并移除此标签。
+ */
+struct AttackReadyTag {};
+
+/**
+ * @struct InjuredTag
+ * @brief 受伤标签。
+ * 
+ * @details
+ * 当单位当前的生命值（HP）小于最大生命值（Max HP）时，添加此标签。
+ * 治疗单位（Healer）会优先寻找带有此标签的友好单位作为目标。
+ */
+struct InjuredTag {};
+
+/**
+ * @struct ActionLockTag
+ * @brief 动作锁定标签（硬直）。
+ * 
+ * @details
+ * 标记实体当前正在执行一个不可中断的动作（如播放攻击动画）。
+ * 带有此标签的实体通常不允许进行移动。
+ * 动画播放系统会在动画结束时负责移除此标签。
+ */
+struct ActionLockTag {};
+
 }   // namespace game::defs

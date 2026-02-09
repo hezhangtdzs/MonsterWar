@@ -3,6 +3,7 @@
 namespace game::defs {
 
 constexpr float BLOCK_RADIUS = 40.0f;   ///< @brief 阻挡半径
+constexpr float UNIT_RADIUS = 16.0f;    ///< @brief 单位判定半径，用于射程补偿
 
 /// @brief 玩家类型枚举
 enum class PlayerType {

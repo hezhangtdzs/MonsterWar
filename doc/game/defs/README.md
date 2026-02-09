@@ -11,6 +11,10 @@ Defs 模块包含游戏的核心定义，包括事件结构和标签组件。这
 | [FaceLeftTag](#facelefttag) | 标签 | 标记精灵默认朝左，用于翻转渲染 |
 | [MeleeUnitTag](#meleeunittag) | 标签 | 标记该实体为近战单位 |
 | [RangedUnitTag](#rangedunittag) | 标签 | 标记该实体为远程单位 |
+| [HealerTag](#healertag) | 标签 | 标记该实体为治疗单位 |
+| [AttackReadyTag](#attackreadytag) | 标签 | 攻击冷却已结束，准备发起下一次攻击 |
+| [InjuredTag](#injuredtag) | 标签 | 实体现有生命值小于最大值，需要治疗 |
+| [ActionLockTag](#actionlocktag) | 标签 | 动作锁定/硬直，期间不允许移动 |
 
 ---
 
@@ -25,6 +29,10 @@ struct DeadTag {};
 struct FaceLeftTag {};
 struct MeleeUnitTag {};
 struct RangedUnitTag {};
+struct HealerTag {};
+struct AttackReadyTag {};
+struct InjuredTag {};
+struct ActionLockTag {};
 ```
 
 ---

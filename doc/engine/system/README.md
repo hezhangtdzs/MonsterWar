@@ -172,7 +172,10 @@ renderLayer(registry, renderer, camera, Layer::FOREGROUND);
 
 ### 功能说明
 
-AnimationSystem 负责更新实体的动画状态，根据时间推进动画播放并更新精灵的源矩形。
+AnimationSystem 负责更新实体的动画状态，根据时间推进动画播放并更新精灵的源矩形。它支持循环动画和单次播放动画。
+
+**事件交互**：
+- 当一个**非循环**动画播放结束时，系统会向 `entt::dispatcher` 发送 `AnimationFinishedEvent` 信号（包含实体 ID 和动画 ID）。
 
 ### 处理流程
 
@@ -191,8 +194,11 @@ AnimationSystem 负责更新实体的动画状态，根据时间推进动画播�
 │  4. 更新帧索引                                              │
 │     current_frame++                                         │
 │     if (current_frame >= total_frames)                      │
-│         if (loop) current_frame = 0                         │
-│         else current_frame = last_frame                     │
+│         if (loop)                                           │
+│             current_frame = 0                               │
+│         else                                                │
+│             current_frame = last_frame                      │
+│             发送 AnimationFinishedEvent 事件                 │
 │                      ↓                                       │
 │  5. 更新 SpriteComponent 的源矩形                            │
 │     sprite.src_rect = current_frame.rect                    │

@@ -24,7 +24,13 @@ void BlockSystem::update(entt::registry& registry, entt::dispatcher& dispatcher)
         // 如果BlockedBy指向的实体无效(例如死亡)，移除被阻挡组件，并发送播放动画“walk”事件
         if (!registry.valid(blocked_by_component.entity_)) {
             registry.remove<game::component::BlockedByComponent>(blocked_by_entity);
+            
+            // 阻挡关系移除时，顺带移除动作锁并恢复行走动画
+            if (registry.all_of<game::defs::ActionLockTag>(blocked_by_entity)) {
+                registry.remove<game::defs::ActionLockTag>(blocked_by_entity);
+            }
             dispatcher.enqueue(engine::utils::PlayAnimationEvent{blocked_by_entity, "walk"_hs, true});
+            
             spdlog::info("阻挡者: ID: {}, 无效, 移除阻挡者组件", entt::to_integral(blocked_by_entity));
         }
     }
@@ -57,8 +63,8 @@ void BlockSystem::update(entt::registry& registry, entt::dispatcher& dispatcher)
                 registry.emplace<game::component::BlockedByComponent>(enemy_entity, blocker_entity);
                 spdlog::info("敌人: ID: {}, 被阻挡, 阻挡者: ID: {}", entt::to_integral(enemy_entity), entt::to_integral(blocker_entity));
                 
-                // 播放动画“attack” （临时测试用，未来会将攻击逻辑放在其他系统里）
-                dispatcher.enqueue(engine::utils::PlayAnimationEvent{enemy_entity, "attack"_hs, true});
+                // 切换到 idle 动画（等待 AttackStarterSystem 触发攻击）
+                dispatcher.enqueue(engine::utils::PlayAnimationEvent{enemy_entity, "idle"_hs, true});
             }
         }
     }

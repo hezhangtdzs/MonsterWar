@@ -65,7 +65,7 @@ namespace game::system {
             game::component::EnemyComponent,
             engine::component::TransformComponent,
             engine::component::VelocityComponent>(
-            entt::exclude<game::component::BlockedByComponent>
+            entt::exclude<game::component::BlockedByComponent, game::defs::ActionLockTag>
             );
 
         // 遍历所有敌人实体
@@ -84,7 +84,7 @@ namespace game::system {
             // 如果距离小于阈值，则切换到下一个节点
             if (glm::length(direction) < 5.0f) {
                 // 获取下一个路径点ID列表的大小
-                auto size = target_node.next_node_ids_.size();
+                size_t size = target_node.next_node_ids_.size();
                 
                 // 如果下一个节点ID列表为空，代表到达终点
                 if (size == 0) {
@@ -97,7 +97,7 @@ namespace game::system {
                 }
 
                 // 随机选择下一个节点
-                auto target_index = engine::utils::randomInt(0, size - 1);
+                auto target_index = engine::utils::randomInt(0, static_cast<int>(size) - 1);
                 enemy.target_waypoint_id_ = target_node.next_node_ids_[target_index];
 
                 // 更新目标节点与方向矢量

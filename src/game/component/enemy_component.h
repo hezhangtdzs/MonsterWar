@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include <entt/core/hashed_string.hpp>
+
 namespace game::component {
     /**
      * @struct EnemyComponent
@@ -32,5 +34,6 @@ namespace game::component {
     struct EnemyComponent {
         int target_waypoint_id_; ///< 当前目标路径点的ID，用于路径导航
         float speed_; ///< 敌人的移动速度（像素/秒）
+        entt::id_type projectile_id_ = entt::null; ///< 远程敌人使用的投射物ID
     };
 }

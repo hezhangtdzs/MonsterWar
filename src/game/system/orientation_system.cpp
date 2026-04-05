@@ -46,11 +46,9 @@ void OrientationSystem::update(entt::registry& registry) {
                 if (std::abs(vel->velocity_.x) > 0.1f) {
                     face_left = (vel->velocity_.x < 0.0f);
                 } else {
-                    // 如果速度几乎为0，保持当前朝向，不作处理
-                    continue; 
+                    continue;
                 }
             } else {
-                // 既没有目标也没有速度，不处理
                 continue;
             }
         }

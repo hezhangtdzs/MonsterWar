@@ -1,11 +1,11 @@
 #include "scene.h"
-#include<spdlog/spdlog.h>
 #include <algorithm> 
 #include "../core/context.h"
 #include "../core/game_state.h"
 #include "../render/camera.h" // 添加Camera头文件
 #include "../ui/ui_manager.h" // 添加UI管理器头文件
 #include "../utils/events.h"
+#include "../utils/logging.h"
 /**
  * @brief 构造函数。
  * @param scene_name 场景名称。
@@ -17,7 +17,7 @@ engine::scene::Scene::Scene(const std::string_view scene_name, engine::core::Con
 {
 	// 初始化UI管理器
 	ui_manager_ = std::make_unique<engine::ui::UIManager>(context_);
-	spdlog::info("Scene {} 创建，UI管理器初始化完成", scene_name_);
+    ENGINE_LOG_INFO("Scene {} 创建，UI管理器初始化完成", scene_name_);
 }
 
 /**
@@ -31,7 +31,7 @@ engine::scene::Scene::~Scene() = default;
 void engine::scene::Scene::init()
 {
 	is_initialized_ = true;
-	spdlog::trace("Scene {} 初始化", scene_name_);
+ ENGINE_LOG_TRACE("Scene {} 初始化", scene_name_);
 }
 
 /**
@@ -53,7 +53,7 @@ void engine::scene::Scene::update(float delta_time)
  */
 void engine::scene::Scene::render()
 {
-	if(is_initialized_){
+ if(is_initialized_){
 		
 		// 渲染UI（在游戏对象之上）
 		if (ui_manager_) {
@@ -68,7 +68,7 @@ void engine::scene::Scene::render()
  */
 bool engine::scene::Scene::handleInput()
 {
-	if (is_initialized_) {
+  if (is_initialized_ && !is_paused_) {
 		// 优先处理UI输入事件
 		bool ui_handled = false;
 		if (ui_manager_) {
@@ -95,8 +95,20 @@ void engine::scene::Scene::clean()
 		}
 		
 		is_initialized_ = false;
-		spdlog::trace("Scene {} 清理完成", scene_name_);
+        ENGINE_LOG_TRACE("Scene {} 清理完成", scene_name_);
 	}
+}
+
+void engine::scene::Scene::onPause()
+{
+	is_paused_ = true;
+	ENGINE_LOG_TRACE("Scene {} 暂停", scene_name_);
+}
+
+void engine::scene::Scene::onResume()
+{
+	is_paused_ = false;
+	ENGINE_LOG_TRACE("Scene {} 恢复", scene_name_);
 }
 
 void engine::scene::Scene::requestPopScene()

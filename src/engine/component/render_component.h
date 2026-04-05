@@ -31,6 +31,8 @@
 
 #pragma once
 
+#include "../utils/math.h"
+
 namespace engine::component {
     /**
      * @struct RenderComponent
@@ -46,6 +48,7 @@ namespace engine::component {
     struct RenderComponent {
         int layer_index_{0};    ///< 渲染层级索引，较小的值表示更靠后的层（先渲染）
         float y_index_{0.0f};   ///< Y轴深度索引，用于同一层内的渲染顺序控制，较小的值先渲染
+        engine::utils::FColor color_{ 1.0f, 1.0f, 1.0f, 1.0f }; ///< 颜色调制，用于受控着色
 
         /**
          * @brief 比较运算符，用于渲染排序

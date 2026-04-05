@@ -137,4 +137,34 @@ struct InjuredTag {};
  */
 struct ActionLockTag {};
 
+/**
+ * @struct VisualEffectTag
+ * @brief 临时视觉实体标签，用于投射物和攻击特效的自动清理。
+ */
+struct VisualEffectTag {};
+
+/**
+ * @struct InactiveVisualTag
+ * @brief 临时视觉实体池中的空闲实体标签，用于对象池复用。
+ */
+struct InactiveVisualTag {};
+
+/**
+ * @struct MeleePlaceTag
+ * @brief 近战建造位标签，用于标记地图上的近战可建造位置。
+ */
+struct MeleePlaceTag {};
+
+/**
+ * @struct RangePlaceTag
+ * @brief 远程建造位标签，用于标记地图上的远程可建造位置。
+ */
+struct RangePlaceTag {};
+
+/**
+ * @struct ShowRangeTag
+ * @brief 范围显示标签，用于驱动远程单位攻击范围预览渲染。
+ */
+struct ShowRangeTag {};
+
 }   // namespace game::defs

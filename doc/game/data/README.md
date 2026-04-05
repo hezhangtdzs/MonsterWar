@@ -1,6 +1,20 @@
 # Data 数据模块
 
+> **版本**: 1.0.0  
+> **最后更新**: 2026-02-15  
+> **相关文档**: [工厂模块](../factory/README.md) | [组件模块](../component/README.md)
+
 Data 模块定义了游戏中使用的核心数据结构，包括路径节点、配置数据等。
+
+---
+
+## 目录
+
+- [类/结构概览](#类结构概览)
+- [EntityBlueprint](#entityblueprint)
+- [WaypointNode](#waypointnode)
+
+---
 
 ## 类/结构概览
 

@@ -103,6 +103,10 @@ namespace engine::scene {
 
 		/** @brief 内部执行：初始化新场景并压入栈。 */
 		void pushScene(std::unique_ptr<Scene>&& scene);
+		/** @brief 内部执行：暂停当前栈顶场景。 */
+		void pauseTopScene();
+		/** @brief 内部执行：恢复当前栈顶场景。 */
+		void resumeTopScene();
 
 		/** @brief 内部执行：清理并移除栈顶场景。 */
 		void popScene();

@@ -45,7 +45,7 @@ namespace engine::resource {
 		}
 
         // 4. 设置主音量 (SDL3 范围是 0.0 - 1.0)
-		MIX_SetMasterGain(mixer_.get(), 0.25f);
+		//MIX_SetMasterGain(mixer_.get(), 0.25f);
         
         spdlog::trace("AudioManager 构造成功。");
     }
@@ -373,7 +373,7 @@ namespace engine::resource {
      */
 	void AudioManager::setMasterGain(float gain) {
 		if (mixer_) {
-			MIX_SetMasterGain(mixer_.get(), std::max(0.0f, gain));
+			//MIX_SetMasterGain(mixer_.get(), std::max(0.0f, gain));
 		}
 	}
 

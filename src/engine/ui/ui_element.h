@@ -7,6 +7,7 @@
 #include <vector>
 #include <memory>
 #include <glm/glm.hpp>
+#include <entt/core/hashed_string.hpp>
 
 namespace engine::core {
     class Context;
@@ -30,6 +31,10 @@ protected:
     UIElement* parent_ = nullptr;
     /// 子元素列表
     std::vector<std::unique_ptr<UIElement>> children_;
+    /// 元素标识
+    entt::id_type id_ = 0;
+    /// 子元素排序键
+    int order_index_ = 0;
     /// 元素位置（相对于父元素）
     glm::vec2 position_ = { 0.0f, 0.0f };
     /// 元素大小
@@ -77,10 +82,36 @@ public:
     virtual void addChild(std::unique_ptr<UIElement> child);
 
     /**
+     * @brief 添加子元素并指定排序键。
+     * @param child 要添加的子元素。
+     * @param order_index 排序键。
+     */
+    virtual void addChild(std::unique_ptr<UIElement> child, int order_index);
+
+    /**
      * @brief 移除指定的子元素。
      * @param child 要移除的子元素指针。
      */
     virtual void removeChild(UIElement* child);
+
+    /**
+     * @brief 通过 ID 查找子元素。
+     * @param id 元素 ID。
+     * @return 找到则返回子元素指针，否则返回 nullptr。
+     */
+    UIElement* getChildById(entt::id_type id) const;
+
+    /**
+     * @brief 通过 ID 移除子元素。
+     * @param id 元素 ID。
+     * @return 成功移除返回 true。
+     */
+    bool removeChildById(entt::id_type id);
+
+    /**
+     * @brief 按排序键整理子元素顺序。
+     */
+    void sortChildrenByOrderIndex();
 
     /**
      * @brief 获取元素的世界坐标位置。
@@ -107,6 +138,12 @@ public:
      * @param parent 父元素指针。
      */
     void setParent(UIElement* parent) { parent_ = parent; }
+
+    entt::id_type getId() const { return id_; }
+    void setId(entt::id_type id) { id_ = id; }
+
+    int getOrderIndex() const { return order_index_; }
+    void setOrderIndex(int order_index) { order_index_ = order_index; }
 
     /**
      * @brief 获取元素位置。

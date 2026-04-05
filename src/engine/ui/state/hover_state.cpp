@@ -84,7 +84,7 @@ std::unique_ptr<UIState> HoverState::handleInput() {
         }
      
         // 检查鼠标是否按下
-        if (input_manager.isActionDown("MouseLeftClick"_hs)) {
+      if (input_manager.isActionDown("mouse_left"_hs)) {
             // 鼠标按下，切换到按下状态
             return std::make_unique<PressedState>(interactive);
         }

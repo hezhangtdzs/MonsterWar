@@ -1,6 +1,28 @@
 # UI 用户界面模块
 
+> **版本**: 1.0.0  
+> **最后更新**: 2026-02-15  
+> **相关文档**: [输入模块](../input/README.md) | [资源模块](../resource/README.md)
+
 UI 模块提供了一套完整的用户界面系统，支持按钮、面板、文本、图片等控件，采用树形结构组织，支持事件处理和状态管理。支持使用 ResourceId 进行高效的资源标识。
+
+---
+
+## 目录
+
+- [架构概览](#架构概览)
+- [类概览](#类概览)
+- [UIManager](#uimanager)
+- [UIElement](#uielement)
+- [UIInteractive](#uiinteractive)
+- [UIButton](#uibutton)
+- [UIPanel](#uipanel)
+- [UIText](#uitext)
+- [UIImage](#uiimage)
+- [UIState](#uistate)
+- [最佳实践](#最佳实践)
+
+---
 
 ## 架构概览
 

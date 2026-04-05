@@ -1,5 +1,7 @@
 #pragma once
 
+#include <entt/core/hashed_string.hpp>
+
 namespace game::component {
 /**
  * @struct PlayerComponent
@@ -7,5 +9,6 @@ namespace game::component {
  */
 struct PlayerComponent {
     int cost_;
+    entt::id_type projectile_id_ = entt::null;
 };
 }

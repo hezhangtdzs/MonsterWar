@@ -9,6 +9,7 @@
         "offset_y": -96,
         "arc_height": 80.0,
         "total_flight_time": 0.5,
+        "rotation_offset_deg": 0.0,
         "sounds": {
             "hit": "arrow_hit"
         }

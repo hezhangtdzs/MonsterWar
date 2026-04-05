@@ -1,6 +1,20 @@
 # Defs 定义模块
 
+> **版本**: 1.0.0  
+> **最后更新**: 2026-02-15  
+> **相关文档**: [系统模块](../system/README.md) | [ECS 架构](../../ECS_ARCHITECTURE.md#标签tags)
+
 Defs 模块包含游戏的核心定义，包括事件结构和标签组件。这些定义是游戏逻辑的基础构建块。
+
+---
+
+## 目录
+
+- [类/结构概览](#类结构概览)
+- [标签 (Tags)](#标签-tags)
+- [EnemyArriveHomeEvent](#enemyarrivehomeevent)
+
+---
 
 ## 类/结构概览
 

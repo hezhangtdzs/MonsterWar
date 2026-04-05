@@ -42,6 +42,7 @@ struct SpriteBlueprint {
 struct AnimationBlueprint {
     float ms_per_frame_ = 100.0f;
     int row_ = 0;
+	std::unordered_map<int, entt::id_type> events_;
     std::vector<int> frames_;
 };
 
@@ -60,6 +61,7 @@ struct SoundBlueprint {
 struct EnemyBlueprint {
     bool ranged_ = false;
     float speed_ = 0.0f;
+    entt::id_type projectile_id_ = entt::null;
 };
 
 /**
@@ -112,6 +114,28 @@ struct PlayerClassBlueprint {
     SpriteBlueprint sprite_;
     DisplayInfoBlueprint display_info_;
     std::unordered_map<entt::id_type, AnimationBlueprint> animations_;
+};
+
+/**
+ * @struct ProjectileBlueprint
+ * @brief 投射物蓝图，存储远程攻击的视觉与飞行参数
+ */
+struct ProjectileBlueprint {
+    entt::id_type projectile_id_ = entt::null;
+    SpriteBlueprint sprite_;
+    float arc_height_ = 0.0f;
+    float total_flight_time_ = 0.5f;
+    float rotation_offset_deg_ = 0.0f;
+};
+
+/**
+ * @struct EffectBlueprint
+ * @brief 特效蓝图，存储治疗与状态特效的视觉数据
+ */
+struct EffectBlueprint {
+    entt::id_type effect_id_ = entt::null;
+    SpriteBlueprint sprite_;
+    AnimationBlueprint animation_;
 };
 
 } // namespace game::data

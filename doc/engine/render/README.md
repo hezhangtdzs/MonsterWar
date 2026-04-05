@@ -1,6 +1,26 @@
 # Render 渲染模块
 
+> **版本**: 1.0.0  
+> **最后更新**: 2026-02-15  
+> **相关文档**: [资源模块](../resource/README.md) | [场景模块](../scene/README.md)
+
 Render 模块负责处理 2D 图形渲染，包括精灵绘制、摄像机管理、动画和文本渲染。
+
+---
+
+## 目录
+
+- [架构概览](#架构概览)
+- [类概览](#类概览)
+- [Renderer](#renderer)
+- [Camera](#camera)
+- [Sprite](#sprite)
+- [Animation](#animation)
+- [TextRenderer](#textrenderer)
+- [渲染流程](#渲染流程)
+- [最佳实践](#最佳实践)
+
+---
 
 ## 架构概览
 

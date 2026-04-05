@@ -17,6 +17,10 @@
  */
 
 #pragma once
+#include <entt/core/hashed_string.hpp>
+#include <entt/entity/entity.hpp>
+#include <glm/vec2.hpp>
+#include "constants.h"
 
 namespace game::defs {
 
@@ -35,5 +39,45 @@ namespace game::defs {
  * - 移除到达基地的敌人实体
  */
 struct EnemyArriveHomeEvent {};         ///< 敌人到达基地的事件
+
+
+struct HealerHitEvent {
+	entt::entity healer_entity_;       ///< 施法者实体
+	entt::entity target_entity_;       ///< 目标实体
+	float heal_amount_;              ///< 治疗量
+};
+
+struct AttackHitEvent {
+	entt::entity attacker_entity_;     ///< 攻击者实体
+	entt::entity target_entity_;       ///< 目标实体
+	float damage_amount_;             ///< 伤害量
+};
+
+struct SpawnProjectileVisualEvent {
+  entt::entity source_entity_{};
+	entt::entity target_entity_{};
+	entt::id_type projectile_id_{};
+};
+
+struct SpawnEffectVisualEvent {
+  entt::entity target_entity_{};
+	entt::id_type effect_id_{};
+};
+
+struct PrepUnitEvent {
+	entt::id_type name_id_{ 0 };
+	entt::id_type class_id_{ 0 };
+	int cost_{ 0 };
+	int level_{ 1 };
+	int rarity_{ 1 };
+};
+
+struct RemoveUIPortraitEvent {
+	entt::id_type name_id_{ 0 };
+};
+
+struct RemovePlayerUnitEvent {
+	entt::entity entity_{ entt::null };
+};
 
 }   // namespace game::defs

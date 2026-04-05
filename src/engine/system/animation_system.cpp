@@ -46,6 +46,12 @@ void AnimationSystem::update(float dt) {
         if (anim_component.current_time_ms_ >= current_frame.duration_ms_) {
             anim_component.current_time_ms_ -= current_frame.duration_ms_;
             anim_component.current_frame_index_++;
+            const int frame_index = static_cast<int>(anim_component.current_frame_index_);
+            if (auto ev_it = current_animation.events_.find(frame_index);ev_it != current_animation.events_.end()) {
+                const entt::id_type event_id = ev_it->second;
+                spdlog::info("动画事件触发: 实体={}, 动画={:x}, 帧={}, 事件={:x}",entt::to_integral(entity), anim_component.current_animation_id_, frame_index, event_id);
+                dispatcher_.enqueue(engine::utils::AnimationEvent{ entity, event_id, anim_component.current_animation_id_ });
+            }
 
             // 处理动画播放完成
             if (anim_component.current_frame_index_ >= current_animation.frames_.size()) {

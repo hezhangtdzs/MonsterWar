@@ -1,6 +1,22 @@
 # Loader 关卡加载模块
 
+> **版本**: 1.0.0  
+> **最后更新**: 2026-02-15  
+> **相关文档**: [场景模块](../scene/README.md) | [资源模块](../resource/README.md)
+
 Loader 模块负责从 Tiled 编辑器生成的 JSON 文件（.tmj）加载关卡数据到游戏场景中。支持图片图层、瓦片图层和对象图层，并处理外部瓦片集（.tsj）链接。
+
+---
+
+## 目录
+
+- [架构概览](#架构概览)
+- [核心组件](#核心组件)
+- [LevelLoader](#levelloader)
+- [BasicEntityBuilder](#basicentitybuilder)
+- [TileData](#tiledata)
+
+---
 
 ## 架构概览
 

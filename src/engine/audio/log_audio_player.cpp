@@ -4,7 +4,7 @@
  */
 
 #include "log_audio_player.h"
-#include <spdlog/spdlog.h>
+#include "../utils/logging.h"
 
 namespace engine::audio {
 
@@ -13,17 +13,17 @@ namespace engine::audio {
 	}
 
 	void LogAudioPlayer::setMasterVolume(float volume) {
-		spdlog::info("LogAudioPlayer: 设置主音量为 {}", volume);
+      ENGINE_LOG_INFO("设置主音量为 {}", volume);
 		wrapped_player_->setMasterVolume(volume);
 	}
 
 	void LogAudioPlayer::setSoundVolume(float volume) {
-		spdlog::info("LogAudioPlayer: 设置音效音量为 {}", volume);
+     ENGINE_LOG_INFO("设置音效音量为 {}", volume);
 		wrapped_player_->setSoundVolume(volume);
 	}
 
 	void LogAudioPlayer::setMusicVolume(float volume) {
-		spdlog::info("LogAudioPlayer: 设置音乐音量为 {}", volume);
+     ENGINE_LOG_INFO("设置音乐音量为 {}", volume);
 		wrapped_player_->setMusicVolume(volume);
 	}
 
@@ -40,39 +40,39 @@ namespace engine::audio {
 	}
 
 	int LogAudioPlayer::playSound(const std::string& path) {
-		spdlog::info("LogAudioPlayer: 播放音效 {}", path);
+      ENGINE_LOG_INFO("播放音效 {}", path);
 		return wrapped_player_->playSound(path);
 	}
 
 	int LogAudioPlayer::playSound(engine::resource::ResourceId id, std::string_view file_path) {
-		spdlog::info("LogAudioPlayer: 播放音效 id={} path={}", id, file_path);
+      ENGINE_LOG_INFO("播放音效 id={} path={}", id, file_path);
 		return wrapped_player_->playSound(id, file_path);
 	}
 
 	int LogAudioPlayer::playSoundSpatial(const std::string& path, const glm::vec2& emitter_world_pos, const glm::vec2& listener_world_pos, float max_distance) {
-		spdlog::info("LogAudioPlayer: 播放空间音效 {}, 位置 ({}, {}), 监听者 ({}, {}), 最大距离 {}",
+       ENGINE_LOG_INFO("播放空间音效 {}, 位置 ({}, {}), 监听者 ({}, {}), 最大距离 {}",
 			path, emitter_world_pos.x, emitter_world_pos.y, listener_world_pos.x, listener_world_pos.y, max_distance);
 		return wrapped_player_->playSoundSpatial(path, emitter_world_pos, listener_world_pos, max_distance);
 	}
 
 	int LogAudioPlayer::playSoundSpatial(engine::resource::ResourceId id, std::string_view file_path, const glm::vec2& emitter_world_pos, const glm::vec2& listener_world_pos, float max_distance) {
-		spdlog::info("LogAudioPlayer: 播放空间音效 id={} path={}, 位置 ({}, {}), 监听者 ({}, {}), 最大距离 {}",
+        ENGINE_LOG_INFO("播放空间音效 id={} path={}, 位置 ({}, {}), 监听者 ({}, {}), 最大距离 {}",
 			id, file_path, emitter_world_pos.x, emitter_world_pos.y, listener_world_pos.x, listener_world_pos.y, max_distance);
 		return wrapped_player_->playSoundSpatial(id, file_path, emitter_world_pos, listener_world_pos, max_distance);
 	}
 
 	bool LogAudioPlayer::playMusic(const std::string& path, int loops) {
-		spdlog::info("LogAudioPlayer: 播放音乐 {}, 循环次数 {}", path, loops);
+      ENGINE_LOG_INFO("播放音乐 {}, 循环次数 {}", path, loops);
 		return wrapped_player_->playMusic(path, loops);
 	}
 
 	bool LogAudioPlayer::playMusic(engine::resource::ResourceId id, std::string_view file_path, int loops) {
-		spdlog::info("LogAudioPlayer: 播放音乐 id={} path={}, 循环次数 {}", id, file_path, loops);
+      ENGINE_LOG_INFO("播放音乐 id={} path={}, 循环次数 {}", id, file_path, loops);
 		return wrapped_player_->playMusic(id, file_path, loops);
 	}
 
 	void LogAudioPlayer::stopMusic() {
-		spdlog::info("LogAudioPlayer: 停止音乐");
+       ENGINE_LOG_INFO("停止音乐");
 		wrapped_player_->stopMusic();
 	}
 }

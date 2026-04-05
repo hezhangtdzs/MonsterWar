@@ -79,6 +79,8 @@ namespace engine::core {
         std::unique_ptr<engine::audio::IAudioPlayer> audio_player_;
         /// 游戏状态
         std::unique_ptr<GameState> game_state_;
+        /// ImGui 是否已初始化
+        bool imgui_initialized_{false};
         /// 初始化回调函数
         std::function<void(engine::core::Context&)> on_init_;
 
@@ -197,6 +199,9 @@ namespace engine::core {
          * @return bool 初始化成功返回 true，否则返回 false。
          */
         [[nodiscard]] bool initSceneManager();
+        [[nodiscard]] bool initImGui();
+        void renderImGui();
+        void shutdownImGui();
         
         /**
          * @brief 初始化物理引擎。

@@ -63,7 +63,7 @@ void SceneManager::update(float delta_time) {
  * @brief 帧渲染逻辑：从底向上叠加渲染场景栈中的所有场景。
  */
 void SceneManager::render() {
-	// 渲染时需要叠加渲染所有场景，而不只是栈顶
+  // 从底向上渲染，让顶层菜单覆盖在暂停中的游戏场景之上
 	for (const auto& scene : scene_stack_) {
 		if (scene) {
 			scene->render();
@@ -130,6 +130,7 @@ void SceneManager::processPendingActions()
 void SceneManager::pushScene(std::unique_ptr<Scene>&& scene)
 {
 	if(!scene) return;
+    pauseTopScene();
 	spdlog::debug("正在将场景 '{}' 压入栈。", scene->getSceneName());
 	// 初始化新场景
 	if (!scene->isInitialized()) { // 确保只初始化一次
@@ -138,6 +139,21 @@ void SceneManager::pushScene(std::unique_ptr<Scene>&& scene)
 
 	// 将新场景移入栈顶
 	scene_stack_.push_back(std::move(scene));
+   resumeTopScene();
+}
+
+void SceneManager::pauseTopScene()
+{
+	if (auto* current_scene = getCurrentScene()) {
+		current_scene->onPause();
+	}
+}
+
+void SceneManager::resumeTopScene()
+{
+	if (auto* current_scene = getCurrentScene()) {
+		current_scene->onResume();
+	}
 }
 
 /**
@@ -154,6 +170,7 @@ void SceneManager::popScene()
 		scene_stack_.back()->clean();       // 显式调用清理
 	}
 	scene_stack_.pop_back();
+   resumeTopScene();
 }
 
 /**
@@ -182,6 +199,7 @@ void SceneManager::replaceScene(std::unique_ptr<Scene>&& scene)
 
 	// 将新场景压入栈顶
 	scene_stack_.push_back(std::move(scene));
+   resumeTopScene();
 }
 
 void SceneManager::onPopScene()

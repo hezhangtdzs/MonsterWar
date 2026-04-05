@@ -1,5 +1,9 @@
 # ECS 架构总览
 
+> **相关文档**: [主文档](README.md) | [组件模块](engine/component/README.md) | [系统模块](engine/system/README.md)
+
+---
+
 ## 目录
 
 - [概述](#概述)
@@ -10,6 +14,9 @@
 - [使用 EnTT 库](#使用-entt-库)
 - [性能考虑](#性能考虑)
 - [最佳实践](#最佳实践)
+- [事件系统](#事件系统)
+
+---
 
 ## 概述
 
@@ -27,6 +34,8 @@ ECS 架构将游戏对象的数据和行为分离：
 2. **灵活性**：通过组合组件定义实体行为
 3. **可扩展性**：易于添加新组件和系统
 4. **可维护性**：数据与逻辑分离，代码更清晰
+
+---
 
 ## ECS 核心概念
 
@@ -69,6 +78,8 @@ registry.emplace<TransformComponent>(entity, glm::vec2(100.0f, 100.0f));
 | TargetComponent | 锁定目标引用 | `game/component/target_component.h` |
 | StatsComponent | 战斗属性数据 | `game/component/stats_component.h` |
 
+---
+
 ### 系统（System）
 
 系统包含处理逻辑，遍历具有特定组件的实体，并执行相应的操作。
@@ -103,6 +114,8 @@ public:
 | AttackStarterSystem | 触发攻击行为 | AttackReadyTag + TargetComponent + ActionLockTag | `game/system/attack_starter_system.h` |
 | AnimationStateSystem | 动作收尾逻辑 | ActionLockTag + AnimationFinishedEvent | `game/system/animation_state_system.h` |
 | OrientationSystem | 朝向状态同步 | TransformComponent + SpriteComponent + Target/Velocity | `game/system/orientation_system.h` |
+
+---
 
 ## 项目中的 ECS 实现
 
@@ -147,6 +160,8 @@ void GameScene::render() {
     render_system_->update(registry_, context_.getRenderer(), context_.getCamera());
 }
 ```
+
+---
 
 ## 架构设计
 
@@ -270,6 +285,8 @@ UI 系统**不使用 ECS 架构**，原因如下：
 └────────────────────────────────────────────────────────────┘
 ```
 
+---
+
 ## 使用 EnTT 库
 
 ### 核心 API
@@ -324,6 +341,8 @@ EnTT 使用**稀疏集（Sparse Set）**数据结构，提供：
 - **O(1)** 的组件访问
 - **缓存友好**的数据布局
 - **高效的**实体遍历
+
+---
 
 ## 性能考虑
 
@@ -386,6 +405,8 @@ for (auto entity : registry.view<entt::entity>()) {
 }
 ```
 
+---
+
 ## 最佳实践
 
 ### 1. 组件设计原则
@@ -427,12 +448,264 @@ spdlog::info("可渲染实体: {}",
     registry.view<TransformComponent, SpriteComponent>().size());
 ```
 
+---
+
 ## 总结
 
 本项目采用 ECS 架构实现了数据与逻辑的分离：
 
-1. **组件**定义实体的属性（Transform、Velocity、Sprite、Animation）
-2. **系统**处理具有特定组件的实体（Movement、Render、Animation）
-3. **实体**是轻量级的标识符，将组件关联在一起
+| 层次 | 职责 | 示例 |
+|------|------|------|
+| **组件** | 定义实体的属性 | Transform、Velocity、Sprite、Animation |
+| **系统** | 处理具有特定组件的实体 | Movement、Render、Animation |
+| **实体** | 轻量级的标识符，将组件关联在一起 | `entt::entity` |
 
 这种架构提供了高性能、灵活性和可扩展性，适合游戏开发的需求。
+
+---
+
+## 事件系统
+
+本项目使用 EnTT 的事件分发器 (`entt::dispatcher`) 实现观察者模式，实现系统间的解耦通信。
+
+### 事件定义
+
+```cpp
+// 事件结构体定义在 engine/utils/events.h
+namespace engine::utils {
+
+struct QuitEvent {};
+
+struct PushSceneEvent {
+    std::unique_ptr<engine::scene::Scene> scene;
+};
+
+struct PopSceneEvent {};
+
+struct PlayAnimationEvent {
+    entt::entity entity;
+    entt::id_type animation_id;
+};
+
+struct AnimationFinishedEvent {
+    entt::entity entity;
+    entt::id_type animation_id;
+};
+
+struct EnemyArriveHomeEvent {};
+
+}
+```
+
+### 事件发送与接收
+
+```cpp
+// 发送事件（立即触发）
+dispatcher.trigger<AnimationFinishedEvent>(entity, "attack"_hs);
+
+// 入队事件（延迟处理）
+dispatcher.enqueue<EnemyArriveHomeEvent>();
+
+// 在帧末尾处理队列
+dispatcher.update();
+```
+
+### 系统订阅事件
+
+```cpp
+class AnimationSystem {
+public:
+    AnimationSystem(entt::registry& registry, entt::dispatcher& dispatcher)
+        : registry_(registry), dispatcher_(dispatcher) {
+        
+        // 订阅动画播放请求
+        dispatcher_.sink<PlayAnimationEvent>().connect<&AnimationSystem::onPlayAnimation>(*this);
+    }
+    
+    ~AnimationSystem() {
+        dispatcher_.sink<PlayAnimationEvent>().disconnect<&AnimationSystem::onPlayAnimation>(*this);
+    }
+    
+private:
+    void onPlayAnimation(const PlayAnimationEvent& event) {
+        auto& anim = registry_.get<AnimationComponent>(event.entity);
+        anim.current_animation_id_ = event.animation_id;
+        anim.current_frame_index_ = 0;
+        anim.current_time_ms_ = 0.0f;
+    }
+    
+    entt::registry& registry_;
+    entt::dispatcher& dispatcher_;
+};
+```
+
+### 事件流程图
+
+```mermaid
+sequenceDiagram
+    participant A as AttackStarterSystem
+    participant D as Dispatcher
+    participant S as AnimationSystem
+    participant AS as AnimationStateSystem
+    
+    A->>D: enqueue<PlayAnimationEvent>
+    Note over D: 事件入队
+    
+    Note over D: 帧末尾
+    D->>S: trigger PlayAnimationEvent
+    S->>S: 切换动画状态
+    
+    Note over S: 动画播放中...
+    
+    S->>D: trigger AnimationFinishedEvent
+    D->>AS: 通知动画结束
+    AS->>AS: 移除 ActionLockTag
+    AS->>S: 切换回 idle 动画
+```
+
+---
+
+## 标签（Tags）
+
+标签是空结构体，用于标记实体状态，不占用存储空间。
+
+### 常用标签
+
+```cpp
+// 定义在 game/defs/tags.h
+namespace game::defs {
+
+struct DeadTag {};              // 死亡标记，等待删除
+struct ActionLockTag {};        // 动作锁定，无法移动
+struct AttackReadyTag {};       // 攻击就绪
+struct InjuredTag {};           // 受伤状态（血量不满）
+struct HealerTag {};            // 治疗单位
+struct MeleeUnitTag {};         // 近战单位
+struct FaceLeftTag {};          // 初始朝左
+
+}
+```
+
+### 标签使用示例
+
+```cpp
+// 添加标签
+registry.emplace<game::defs::DeadTag>(entity);
+
+// 检查标签
+if (registry.all_of<game::defs::ActionLockTag>(entity)) {
+    // 实体处于动作锁定状态
+}
+
+// 移除标签
+registry.remove<game::defs::AttackReadyTag>(entity);
+
+// 查询带标签的实体
+auto dead_entities = registry.view<game::defs::DeadTag>();
+```
+
+### 标签与系统配合
+
+```mermaid
+flowchart LR
+    A[TimerSystem] -->|冷却结束| B[添加 AttackReadyTag]
+    B --> C[AttackStarterSystem]
+    C -->|触发攻击| D[移除 AttackReadyTag]
+    D --> E[添加 ActionLockTag]
+    E --> F[AnimationSystem]
+    F -->|动画结束| G[AnimationStateSystem]
+    G --> H[移除 ActionLockTag]
+```
+
+---
+
+## 战斗系统 ECS 实现
+
+### 组件组合
+
+```mermaid
+graph TB
+    subgraph 敌人实体
+        E1[TransformComponent]
+        E2[VelocityComponent]
+        E3[SpriteComponent]
+        E4[AnimationComponent]
+        E5[EnemyComponent]
+        E6[StatsComponent]
+    end
+    
+    subgraph 玩家单位实体
+        P1[TransformComponent]
+        P2[SpriteComponent]
+        P3[AnimationComponent]
+        P4[StatsComponent]
+        P5[PlayerComponent]
+        P6{单位类型}
+        P6 -->|近战| P7[BlockerComponent]
+        P6 -->|治疗| P8[HealerTag]
+    end
+    
+    subgraph 战斗状态标签
+        T1[TargetComponent]
+        T2[AttackReadyTag]
+        T3[ActionLockTag]
+        T4[DeadTag]
+    end
+```
+
+### 系统协作流程
+
+```mermaid
+flowchart TB
+    subgraph 每帧更新
+        A[SetTargetSystem<br/>目标锁定] --> B[TimerSystem<br/>冷却计时]
+        B --> C[AttackStarterSystem<br/>攻击触发]
+        C --> D[BlockSystem<br/>阻挡处理]
+        D --> E[FollowPathSystem<br/>寻路移动]
+        E --> F[OrientationSystem<br/>朝向更新]
+        F --> G[AnimationSystem<br/>动画更新]
+        G --> H[MovementSystem<br/>位置更新]
+        H --> I[RemoveDeadSystem<br/>清理死亡]
+    end
+```
+
+### 完整实体创建示例
+
+```cpp
+// 创建敌人
+entt::entity createEnemy(
+    entt::registry& registry,
+    const EnemyClassBlueprint& blueprint,
+    glm::vec2 position,
+    int waypoint_id
+) {
+    auto entity = registry.create();
+    
+    // 基础组件
+    registry.emplace<TransformComponent>(entity, position);
+    registry.emplace<VelocityComponent>(entity, glm::vec2(0.0f));
+    registry.emplace<RenderComponent>(entity, 1, position.y);
+    
+    // 表现组件
+    registry.emplace<SpriteComponent>(entity, 
+        Sprite(blueprint.sprite_path_, blueprint.sprite_rect_));
+    registry.emplace<AnimationComponent>(entity, 
+        blueprint.animations_, "idle"_hs);
+    
+    // 战斗组件
+    registry.emplace<StatsComponent>(entity,
+        blueprint.base_hp_, blueprint.base_hp_,
+        blueprint.base_atk_, blueprint.base_def_,
+        blueprint.base_range_, blueprint.base_atk_interval_, 0.0f,
+        1, 1);
+    
+    // 敌人特有组件
+    registry.emplace<EnemyComponent>(entity, waypoint_id, blueprint.base_speed_);
+    registry.emplace<ClassNameComponent>(entity, blueprint.class_id_, blueprint.class_name_);
+    
+    // 初始标签
+    registry.emplace<FaceLeftTag>(entity);
+    
+    return entity;
+}
+```

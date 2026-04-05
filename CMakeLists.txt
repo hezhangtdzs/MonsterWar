@@ -3,13 +3,15 @@ project(SunnyLand VERSION 0.1.0 LANGUAGES C CXX)
 
 # C++ 标准
 set(CMAKE_CXX_STANDARD 23)
-set(CMAKE_CXX_STANDARD_REQUIRED True)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 # 编译选项
 if(MSVC)
     add_compile_options(/W4)
     add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
     add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
+    add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/std:c++latest>")
 else()
     add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
@@ -84,6 +86,9 @@ set(CORE_SOURCES
     
     src/game/scene/game_scene.cpp
 
+    src/game/data/session_data.cpp
+    src/game/data/ui_config.cpp
+
     src/game/loader/entity_builder_mw.cpp
 
     src/game/system/followpath_system.cpp
@@ -93,11 +98,18 @@ set(CORE_SOURCES
     src/game/system/timer_system.cpp
     src/game/system/attack_starter_system.cpp
     src/game/system/animation_state_system.cpp
+    src/game/system/animation_events_system.cpp
     src/game/system/orientation_system.cpp
+    src/game/system/projectile_visual_system.cpp
+    src/game/system/game_rule_system.cpp
+    src/game/system/place_unit_system.cpp
+    src/game/system/render_range_system.cpp
+    src/game/ui/units_portrait_ui.cpp
 
     src/game/factory/blueprint_manager.cpp
     src/game/factory/entity_factory.cpp
-)
+    src/game/system/combat_resolve_system.cpp
+    src/engine/system/audio_system.cpp)
 
 # 扩展库源文件
 set(EXTERNAL_SOURCES

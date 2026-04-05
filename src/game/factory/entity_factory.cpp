@@ -23,6 +23,8 @@
 #include "../component/class_name_component.h"
 #include "../component/enemy_component.h"
 #include "../component/player_component.h"
+#include "../component/projectile_visual_component.h"
+#include "../component/unit_prep_component.h"
 #include "../component/blocker_component.h"
 #include "../defs/tags.h"
 #include "../../engine/component/transform_component.h"
@@ -32,7 +34,8 @@
 #include "../../engine/component/render_component.h"
 #include "../../engine/component/velocity_component.h"
 #include "../../engine/utils/math.h"
-#include <spdlog/spdlog.h>
+#include "../../engine/utils/logging.h"
+#include <cmath>
 
 namespace game::factory {
 
@@ -43,7 +46,7 @@ namespace game::factory {
  */
 EntityFactory::EntityFactory(entt::registry& registry, const BlueprintManager& blueprint_manager)
     : registry_(registry), blueprint_manager_(blueprint_manager) {
-    spdlog::info("EntityFactory initialized");
+    ENGINE_LOG_INFO("EntityFactory initialized");
 }
 
 /**
@@ -88,7 +91,7 @@ entt::entity EntityFactory::createEnemyUnit(entt::id_type class_id,
                                             int rarity) {
     // 检查蓝图是否存在
     if (!blueprint_manager_.hasEnemyClassBlueprint(class_id)) {
-        spdlog::error("找不到敌人类型ID: {}", class_id);
+        ENGINE_LOG_ERROR("找不到敌人类型ID: {}", class_id);
         return entt::null;
     }
 
@@ -124,7 +127,7 @@ entt::entity EntityFactory::createEnemyUnit(entt::id_type class_id,
         registry_.emplace<game::defs::MeleeUnitTag>(entity);
     }
 
-    spdlog::info("创建敌人单位: {} (等级: {}, 稀有度: {})", blueprint.display_info_.name_, level, rarity);
+    ENGINE_LOG_INFO("创建敌人单位: {} (等级: {}, 稀有度: {})", blueprint.display_info_.name_, level, rarity);
     return entity;
 }
 
@@ -149,7 +152,7 @@ entt::entity EntityFactory::createPlayerUnit(entt::id_type class_id,
                                              int rarity) {
     // 检查蓝图是否存在
     if (!blueprint_manager_.hasPlayerClassBlueprint(class_id)) {
-        spdlog::error("找不到玩家类型ID: {}", class_id);
+        ENGINE_LOG_ERROR("找不到玩家类型ID: {}", class_id);
         return entt::null;
     }
 
@@ -179,8 +182,59 @@ entt::entity EntityFactory::createPlayerUnit(entt::id_type class_id,
         registry_.emplace<game::defs::FaceLeftTag>(entity);
     }
 
-    spdlog::info("创建玩家单位过程完成: {} (等级: {}, 稀有度: {})", blueprint.display_info_.name_, level, rarity);
+    ENGINE_LOG_INFO("创建玩家单位过程完成: {} (等级: {}, 稀有度: {})", blueprint.display_info_.name_, level, rarity);
     return entity;
+}
+
+entt::entity EntityFactory::createUnitPrep(entt::id_type name_id,
+                                          entt::id_type class_id,
+                                          const glm::vec2& position,
+                                          int cost,
+                                          int level,
+                                          int rarity) {
+    if (!blueprint_manager_.hasPlayerClassBlueprint(class_id)) {
+        ENGINE_LOG_ERROR("找不到玩家类型ID: {}", class_id);
+        return entt::null;
+    }
+
+    const auto& blueprint = blueprint_manager_.getPlayerClassBlueprint(class_id);
+    entt::entity entity = registry_.create();
+
+    addTransformComponent(entity, position);
+    addSpriteComponent(entity, blueprint.sprite_);
+    addAnimationComponent(entity, blueprint.animations_, blueprint.sprite_, entt::hashed_string("idle"));
+
+    registry_.emplace<game::component::UnitPrepComponent>(entity,
+        name_id,
+        class_id,
+        blueprint.player_.type_,
+        cost,
+        blueprint.stats_.range_,
+        level,
+        rarity);
+
+    addRenderComponent(entity, 100);
+
+    if (!blueprint.sprite_.face_right_) {
+        registry_.emplace<game::defs::FaceLeftTag>(entity);
+    }
+
+    if (blueprint.player_.type_ == game::defs::PlayerType::RANGED) {
+        registry_.emplace<game::defs::ShowRangeTag>(entity);
+    }
+
+    ENGINE_LOG_INFO("创建准备单位: {} (cost={}, level={}, rarity={})", blueprint.display_info_.name_, cost, level, rarity);
+    return entity;
+}
+
+int EntityFactory::getPlayerUnitCost(entt::id_type class_id, int rarity) const {
+    if (!blueprint_manager_.hasPlayerClassBlueprint(class_id)) {
+        spdlog::error("找不到玩家类型ID: {}", class_id);
+        return 0;
+    }
+
+    const auto& blueprint = blueprint_manager_.getPlayerClassBlueprint(class_id);
+    return static_cast<int>(std::round(blueprint.player_.cost_ * (0.9f + 0.1f * rarity)));
 }
 
 /**
@@ -189,7 +243,7 @@ entt::entity EntityFactory::createPlayerUnit(entt::id_type class_id,
  * @param position 初始位置
  */
 void EntityFactory::addTransformComponent(entt::entity entity, const glm::vec2& position) {
-    registry_.emplace<engine::component::TransformComponent>(entity, position);
+    registry_.emplace_or_replace<engine::component::TransformComponent>(entity, position);
 }
 
 /**
@@ -200,7 +254,7 @@ void EntityFactory::addTransformComponent(entt::entity entity, const glm::vec2& 
  * 初始速度设置为 (0.0f, 0.0f)，敌人的实际速度将由 FollowPathSystem 根据路径计算。
  */
 void EntityFactory::addVelocityComponent(entt::entity entity) {
-    registry_.emplace<engine::component::VelocityComponent>(entity, glm::vec2(0.0f, 0.0f));
+    registry_.emplace_or_replace<engine::component::VelocityComponent>(entity, glm::vec2(0.0f, 0.0f));
 }
 
 /**
@@ -215,7 +269,7 @@ void EntityFactory::addSpriteComponent(entt::entity entity, const data::SpriteBl
                   sprite.size_.x, sprite.size_.y, sprite.offset_.x, sprite.offset_.y);
     
     engine::component::Sprite sprite_data(sprite.path_, sprite.src_rect_, !sprite.face_right_);
-    registry_.emplace<engine::component::SpriteComponent>(entity, std::move(sprite_data), sprite.size_, sprite.offset_);
+    registry_.emplace_or_replace<engine::component::SpriteComponent>(entity, std::move(sprite_data), sprite.size_, sprite.offset_);
 }
 
 /**
@@ -232,11 +286,16 @@ void EntityFactory::addAnimationComponent(entt::entity entity,
     std::unordered_map<entt::id_type, engine::component::Animation> anim_map;
 
     for (const auto& [anim_id, anim_blueprint] : animations) {
+        //float ms_per_frame_ = 100.0f;
+        //int row_ = 0;
+        //std::unordered_map<int, entt::id_type> events_;
+        //std::vector<int> frames_;
         std::vector<engine::component::AnimationFrame> frames;
+        std::unordered_map<int, entt::id_type> events;
 
         float frame_width = sprite.src_rect_.size.x;
         float frame_height = sprite.src_rect_.size.y;
-
+        events = anim_blueprint.events_;
         for (int frame_idx : anim_blueprint.frames_) {
             float x = frame_idx * frame_width;
             float y = anim_blueprint.row_ * frame_height;
@@ -244,7 +303,7 @@ void EntityFactory::addAnimationComponent(entt::entity entity,
             frames.emplace_back(frame_rect, anim_blueprint.ms_per_frame_);
         }
 
-        anim_map.emplace(anim_id, engine::component::Animation{std::move(frames), true});
+        anim_map.emplace(anim_id, engine::component::Animation{std::move(frames),std::move(events), true});
     }
 
     // 如果没有指定默认动画，使用第一个可用的动画
@@ -252,7 +311,7 @@ void EntityFactory::addAnimationComponent(entt::entity entity,
         default_anim_id = anim_map.begin()->first;
     }
 
-    registry_.emplace<engine::component::AnimationComponent>(entity, std::move(anim_map), default_anim_id);
+    registry_.emplace_or_replace<engine::component::AnimationComponent>(entity, std::move(anim_map), default_anim_id);
 }
 
 /**
@@ -263,7 +322,7 @@ void EntityFactory::addAnimationComponent(entt::entity entity,
 void EntityFactory::addAudioComponent(entt::entity entity, const data::SoundBlueprint& sounds) {
     engine::component::AudioComponent audio;
     audio.action_sounds_ = sounds.sounds_;
-    registry_.emplace<engine::component::AudioComponent>(entity, std::move(audio));
+    registry_.emplace_or_replace<engine::component::AudioComponent>(entity, std::move(audio));
 }
 
 /**
@@ -288,7 +347,7 @@ void EntityFactory::addStatsComponent(entt::entity entity, const data::StatsBlue
     stats_comp.atk_timer_ = 0.0f;
     stats_comp.level_ = level;
     stats_comp.rarity_ = rarity;
-    registry_.emplace<game::component::StatsComponent>(entity, std::move(stats_comp));
+    registry_.emplace_or_replace<game::component::StatsComponent>(entity, std::move(stats_comp));
 }
 
 /**
@@ -298,24 +357,128 @@ void EntityFactory::addStatsComponent(entt::entity entity, const data::StatsBlue
  * @param target_waypoint_id 目标路径点ID
  */
 void EntityFactory::addEnemyComponent(entt::entity entity, const data::EnemyBlueprint& enemy, int target_waypoint_id) {
-    registry_.emplace<game::component::EnemyComponent>(entity, target_waypoint_id, enemy.speed_);
+    registry_.emplace_or_replace<game::component::EnemyComponent>(entity, target_waypoint_id, enemy.speed_, enemy.projectile_id_);
 }
 
 void EntityFactory::addPlayerComponent(entt::entity entity, const data::PlayerBlueprint &player, int rarity)
 {
     auto cost = static_cast<int>(std::round(player.cost_ * (0.9f + 0.1f * rarity)));
-    registry_.emplace<game::component::PlayerComponent>(entity, cost);
+    registry_.emplace_or_replace<game::component::PlayerComponent>(entity, cost, player.projectile_id_);
     
     if(player.type_ == game::defs::PlayerType::MELEE) {
-        registry_.emplace<game::defs::MeleeUnitTag>(entity);
-        registry_.emplace<game::component::BlockerComponent>(entity, player.block_);
+        registry_.emplace_or_replace<game::defs::MeleeUnitTag>(entity);
+        registry_.emplace_or_replace<game::component::BlockerComponent>(entity, player.block_);
     } else if(player.type_ == game::defs::PlayerType::RANGED) {
-        registry_.emplace<game::defs::RangedUnitTag>(entity);
+        registry_.emplace_or_replace<game::defs::RangedUnitTag>(entity);
     } 
     
     if(player.is_healer_) {
-        registry_.emplace<game::defs::HealerTag>(entity);
+        registry_.emplace_or_replace<game::defs::HealerTag>(entity);
     }
+}
+
+entt::entity EntityFactory::createProjectileVisual(entt::id_type projectile_id,
+                                                   const glm::vec2& source_position,
+                                                   const glm::vec2& target_position,
+                                                   const glm::vec2& target_velocity)
+{
+    if (!blueprint_manager_.hasProjectileBlueprint(projectile_id)) {
+        ENGINE_LOG_WARN("找不到投射物蓝图: {}", projectile_id);
+        return entt::null;
+    }
+
+    const auto& blueprint = blueprint_manager_.getProjectileBlueprint(projectile_id);
+    auto entity = [&]() {
+        auto view = registry_.view<game::defs::VisualEffectTag, game::defs::InactiveVisualTag>();
+        if (auto it = view.begin(); it != view.end()) {
+            auto reused = *it;
+            registry_.remove<game::defs::InactiveVisualTag>(reused);
+            return reused;
+        }
+        return registry_.create();
+    }();
+
+    if (!registry_.all_of<game::defs::VisualEffectTag>(entity)) {
+        registry_.emplace_or_replace<game::defs::VisualEffectTag>(entity);
+    }
+
+    const glm::vec2 delta = target_position - source_position;
+    const float delta_len = std::sqrt(delta.x * delta.x + delta.y * delta.y);
+    const glm::vec2 direction = delta_len > 0.001f ? delta / delta_len : glm::vec2{ 1.0f, 0.0f };
+    const glm::vec2 start_position = source_position + direction * 24.0f;
+
+    addTransformComponent(entity, start_position);
+    auto sprite = blueprint.sprite_;
+    sprite.face_right_ = direction.x >= 0.0f;
+    addSpriteComponent(entity, sprite);
+    addRenderComponent(entity, 12);
+
+    const float flight_time = blueprint.total_flight_time_ > 0.1f ? blueprint.total_flight_time_ : 0.1f;
+    const glm::vec2 lead_target_position = target_position + target_velocity * flight_time;
+    const glm::vec2 lead_delta = lead_target_position - start_position;
+    const float initial_tangent_y = lead_delta.y - blueprint.arc_height_ * 4.0f;
+    registry_.emplace_or_replace<game::component::ProjectileVisualComponent>(
+        entity,
+        start_position,
+        lead_target_position,
+        blueprint.arc_height_,
+        flight_time,
+        0.0f,
+        blueprint.rotation_offset_deg_);
+
+    auto& transform = registry_.get<engine::component::TransformComponent>(entity);
+    constexpr float rad_to_deg = 180.0f / 3.14159265358979323846f;
+    transform.rotation_ = std::atan2(initial_tangent_y, lead_delta.x) * rad_to_deg + blueprint.rotation_offset_deg_;
+
+    std::vector<engine::component::AnimationFrame> frames;
+    frames.emplace_back(blueprint.sprite_.src_rect_, flight_time * 1000.0f);
+    std::unordered_map<entt::id_type, engine::component::Animation> animations;
+    animations.emplace(entt::hashed_string("fly"), engine::component::Animation{ std::move(frames), {}, false });
+    registry_.emplace_or_replace<engine::component::AnimationComponent>(entity, std::move(animations), entt::hashed_string("fly"));
+    registry_.emplace_or_replace<game::defs::VisualEffectTag>(entity);
+    return entity;
+}
+
+entt::entity EntityFactory::createEffectVisual(entt::id_type effect_id,
+                                               const glm::vec2& position)
+{
+    if (!blueprint_manager_.hasEffectBlueprint(effect_id)) {
+        ENGINE_LOG_WARN("找不到特效蓝图: {}", effect_id);
+        return entt::null;
+    }
+
+    const auto& blueprint = blueprint_manager_.getEffectBlueprint(effect_id);
+    auto entity = [&]() {
+        auto view = registry_.view<game::defs::VisualEffectTag, game::defs::InactiveVisualTag>();
+        if (auto it = view.begin(); it != view.end()) {
+            auto reused = *it;
+            registry_.remove<game::defs::InactiveVisualTag>(reused);
+            return reused;
+        }
+        return registry_.create();
+    }();
+
+    if (!registry_.all_of<game::defs::VisualEffectTag>(entity)) {
+        registry_.emplace<game::defs::VisualEffectTag>(entity);
+    }
+
+    addTransformComponent(entity, position);
+    addSpriteComponent(entity, blueprint.sprite_);
+    addRenderComponent(entity, 12);
+
+    std::vector<engine::component::AnimationFrame> frames;
+    for (int frame_index : blueprint.animation_.frames_) {
+        const float x = blueprint.sprite_.src_rect_.size.x * static_cast<float>(frame_index);
+        const float y = blueprint.animation_.row_ * blueprint.sprite_.src_rect_.size.y;
+        engine::utils::Rect frame_rect{ x, y, blueprint.sprite_.src_rect_.size.x, blueprint.sprite_.src_rect_.size.y };
+        frames.emplace_back(frame_rect, blueprint.animation_.ms_per_frame_);
+    }
+
+    std::unordered_map<entt::id_type, engine::component::Animation> animations;
+    animations.emplace(blueprint.effect_id_, engine::component::Animation{ std::move(frames), {}, false });
+    registry_.emplace_or_replace<engine::component::AnimationComponent>(entity, std::move(animations), blueprint.effect_id_);
+    registry_.emplace_or_replace<game::defs::VisualEffectTag>(entity);
+    return entity;
 }
 
 /**
@@ -328,7 +491,7 @@ void EntityFactory::addPlayerComponent(entt::entity entity, const data::PlayerBl
  * 较大的索引后渲染（在上层）。
  */
 void EntityFactory::addRenderComponent(entt::entity entity, int layer_index) {
-    registry_.emplace<engine::component::RenderComponent>(entity, layer_index);
+    registry_.emplace_or_replace<engine::component::RenderComponent>(entity, layer_index);
 }
 
 } // namespace game::factory

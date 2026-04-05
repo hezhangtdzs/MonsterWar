@@ -1,6 +1,25 @@
 # Scene 场景模块
 
+> **版本**: 1.0.0  
+> **最后更新**: 2026-02-15  
+> **相关文档**: [核心模块](../core/README.md) | [渲染模块](../render/README.md) | [ECS 架构](../../ECS_ARCHITECTURE.md)
+
 Scene 模块负责管理游戏场景的生命周期、场景切换和关卡加载。支持场景栈管理，允许场景叠加（如在游戏场景上弹出菜单）。
+
+---
+
+## 目录
+
+- [架构概览](#架构概览)
+- [类概览](#类概览)
+- [Scene](#scene)
+- [SceneManager](#scenemanager)
+- [LevelLoader](#levelloader)
+- [场景生命周期](#场景生命周期)
+- [Scene 与 ECS 集成](#scene-与-ecs-集成)
+- [最佳实践](#最佳实践)
+
+---
 
 ## 架构概览
 
@@ -367,3 +386,183 @@ graph TB
 3. **延迟切换**: 使用 `requestXxx` 方法进行场景切换，避免在遍历中修改场景栈
 4. **关卡数据**: 使用 LevelLoader 加载 Tiled 编辑器创建的关卡
 5. **会话数据**: 使用 SessionData 在场景间传递数据
+
+## Scene 与 ECS 集成
+
+Scene 类内置了 EnTT 注册表 (`entt::registry`)，支持完整的 ECS 架构：
+
+### 类定义（ECS 支持）
+
+```cpp
+class Scene {
+protected:
+    std::string scene_name_;
+    engine::core::Context& context_;
+    entt::registry registry_;  // EnTT 注册表
+    bool is_initialized_ = false;
+    std::unique_ptr<engine::ui::UIManager> ui_manager_;
+
+public:
+    // ECS 实体管理
+    entt::registry& getRegistry() { return registry_; }
+    
+    // 场景请求方法
+    void requestPopScene();
+    void requestPushScene(std::unique_ptr<engine::scene::Scene>&& scene);
+    void requestReplaceScene(std::unique_ptr<engine::scene::Scene>&& scene);
+    
+    // 退出游戏
+    void quit();
+};
+```
+
+### 使用 ECS 创建实体
+
+```cpp
+class GameScene : public engine::scene::Scene {
+public:
+    void init() override {
+        // 创建 ECS 实体
+        auto entity = registry_.create();
+        
+        // 添加组件
+        registry_.emplace<engine::component::TransformComponent>(
+            entity, glm::vec2(100.0f, 200.0f)
+        );
+        registry_.emplace<engine::component::SpriteComponent>(
+            entity, sprite_data
+        );
+        registry_.emplace<engine::component::VelocityComponent>(
+            entity, glm::vec2(0.0f, 0.0f)
+        );
+    }
+};
+```
+
+## 场景请求机制
+
+SceneManager 采用"延迟处理"机制，确保场景切换安全执行：
+
+### 延迟处理流程
+
+```mermaid
+sequenceDiagram
+    participant S as Scene
+    participant SM as SceneManager
+    participant Stack as 场景栈
+
+    Note over S: 场景更新中...
+    S->>SM: requestPushScene(new_scene)
+    SM->>SM: 记录 pending_action_ = Push
+    SM->>SM: 保存 pending_scene_
+    Note over SM: 等待帧结束
+    SM->>SM: processPendingActions()
+    SM->>Stack: 执行实际的场景压入
+    Stack->>S: 调用新场景的 init()
+```
+
+### PendingAction 枚举
+
+```cpp
+enum class PendingAction {
+    None,    // 无待处理操作
+    Push,    // 压入新场景
+    Pop,     // 弹出当前场景
+    Replace  // 替换整个场景栈
+};
+```
+
+### 事件驱动场景切换
+
+Scene 通过事件系统与 SceneManager 通信：
+
+```cpp
+// 在 Scene 中请求场景切换
+void Scene::requestPushScene(std::unique_ptr<Scene>&& scene) {
+    context_.getDispatcher().enqueue<engine::utils::PushSceneEvent>(
+        engine::utils::PushSceneEvent{std::move(scene)}
+    );
+}
+
+void Scene::requestPopScene() {
+    context_.getDispatcher().enqueue<engine::utils::PopSceneEvent>();
+}
+
+void Scene::quit() {
+    context_.getDispatcher().enqueue<engine::utils::QuitEvent>();
+}
+```
+
+## 场景栈管理示例
+
+```mermaid
+graph TB
+    subgraph 正常游戏流程
+        A[TitleScene] -->|开始游戏| B[GameScene]
+        B -->|暂停| C[PauseScene]
+        C -->|继续| B
+        B -->|游戏结束| D[GameOverScene]
+        D -->|重新开始| B
+        D -->|返回标题| A
+    end
+    
+    subgraph 场景栈状态
+        E["TitleScene<br/>栈: [Title]"]
+        F["GameScene<br/>栈: [Game]"]
+        G["PauseScene<br/>栈: [Game, Pause]"]
+    end
+```
+
+### 代码示例
+
+```cpp
+// TitleScene 中切换到游戏
+void TitleScene::onStartButtonClicked() {
+    requestReplaceScene(std::make_unique<GameScene>(context_));
+}
+
+// GameScene 中打开暂停菜单
+void GameScene::onPauseButtonClicked() {
+    requestPushScene(std::make_unique<PauseScene>(context_));
+}
+
+// PauseScene 中继续游戏
+void PauseScene::onResumeButtonClicked() {
+    requestPopScene();
+}
+
+// 退出游戏
+void AnyScene::onQuitButtonClicked() {
+    quit();  // 发送 QuitEvent
+}
+```
+
+## 会话数据跨场景传递
+
+```cpp
+// 定义会话数据
+namespace game::data {
+    struct SessionData {
+        int player_score = 0;
+        int current_level = 1;
+        std::vector<std::string> unlocked_items;
+    };
+}
+
+// 在场景间传递
+void TitleScene::startNewGame() {
+    auto session = std::make_shared<game::data::SessionData>();
+    session->current_level = 1;
+    
+    context_.getSceneManager().setSessionData(session);
+    requestReplaceScene(std::make_unique<GameScene>(context_));
+}
+
+// 在新场景中获取
+void GameScene::init() {
+    auto session = context_.getSceneManager().getSessionData();
+    if (session) {
+        current_level_ = session->current_level;
+    }
+}
+```

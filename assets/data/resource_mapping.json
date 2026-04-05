@@ -16,5 +16,11 @@
         "battle_bgm": "assets/audio/4 Battle Track INTRO TomMusic.ogg",
         "win": "assets/audio/level-win.mp3",
         "lose": "assets/audio/violin-lose-4.mp3"
+    },
+    "textures": {
+        "ui_frame": "assets/textures/UI/frame.png",
+        "ui_circle": "assets/textures/UI/circle.png",
+        "ui_title": "assets/textures/UI/title.png",
+        "ui_weapon_icon": "assets/textures/UI/weapon_icon.png"
     }
 }

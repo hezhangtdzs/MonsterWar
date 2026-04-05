@@ -1,16 +1,34 @@
 # 系统模块 (System Module)
 
-## 概述
+> **版本**: 1.0.0  
+> **最后更新**: 2026-02-15  
+> **相关文档**: [组件模块](../component/README.md) | [ECS 架构](../../ECS_ARCHITECTURE.md)
 
 系统模块是 ECS 架构中的核心部分，负责处理具有特定组件组合的实体的逻辑。每个系统都有明确的职责，通过遍历 EnTT 注册表中的实体来执行相应的操作。
+
+---
+
+## 目录
+
+- [系统列表](#系统列表)
+- [MovementSystem](#movementsystem)
+- [RenderSystem](#rendersystem)
+- [AnimationSystem](#animationsystem)
+- [YSortSystem](#ysortsystem)
+- [系统执行顺序](#系统执行顺序)
+- [添加新系统](#添加新系统)
+- [调试技巧](#调试技巧)
+
+---
 
 ## 系统列表
 
 | 系统 | 功能 | 处理的组件 | 更新频率 |
 |------|------|------------|----------|
 | [MovementSystem](#movementsystem) | 更新实体位置 | VelocityComponent + TransformComponent | 每帧 |
-| [RenderSystem](#rendersystem) | 渲染实体 | TransformComponent + SpriteComponent | 每帧（渲染阶段） |
+| [RenderSystem](#rendersystem) | 渲染实体 | TransformComponent + SpriteComponent + RenderComponent | 每帧（渲染阶段） |
 | [AnimationSystem](#animationsystem) | 更新动画状态 | AnimationComponent + SpriteComponent | 每帧 |
+| [YSortSystem](#ysortsystem) | Y轴排序更新 | TransformComponent + RenderComponent | 每帧 |
 
 ## MovementSystem
 
@@ -172,10 +190,29 @@ renderLayer(registry, renderer, camera, Layer::FOREGROUND);
 
 ### 功能说明
 
-AnimationSystem 负责更新实体的动画状态，根据时间推进动画播放并更新精灵的源矩形。它支持循环动画和单次播放动画。
+AnimationSystem 负责更新实体的动画状态，根据时间推进动画播放并更新精灵的源矩形。它支持循环动画和单次播放动画，并通过事件系统与其他模块交互。
 
 **事件交互**：
-- 当一个**非循环**动画播放结束时，系统会向 `entt::dispatcher` 发送 `AnimationFinishedEvent` 信号（包含实体 ID 和动画 ID）。
+- 监听 `PlayAnimationEvent` 事件来切换动画
+- 当一个**非循环**动画播放结束时，系统会向 `entt::dispatcher` 发送 `AnimationFinishedEvent` 信号（包含实体 ID 和动画 ID）
+
+### 类定义
+
+```cpp
+class AnimationSystem {
+public:
+    AnimationSystem(entt::registry& registry, entt::dispatcher& dispatcher);
+    ~AnimationSystem();
+    
+    void update(float dt);
+
+private:
+    void onPlayAnimationEvent(const engine::utils::PlayAnimationEvent& event);
+    
+    entt::registry& registry_;
+    entt::dispatcher& dispatcher_;
+};
+```
 
 ### 处理流程
 
@@ -427,8 +464,95 @@ spdlog::debug("MovementSystem 耗时: {} μs", duration.count());
 
 系统模块是 ECS 架构的核心，每个系统都有明确的职责：
 
-- **MovementSystem**：处理实体运动
-- **RenderSystem**：渲染游戏世界
-- **AnimationSystem**：管理动画播放
+- **MovementSystem**：处理实体运动，基于速度更新位置
+- **RenderSystem**：渲染游戏世界，支持层级排序
+- **AnimationSystem**：管理动画播放，支持事件驱动
+- **YSortSystem**：Y轴排序，实现2.5D深度效果
 
 通过组合不同的系统，可以实现复杂的游戏逻辑，同时保持代码的清晰和可维护性。
+
+## YSortSystem
+
+### 功能说明
+
+YSortSystem 负责根据实体的 Y 轴位置更新其渲染顺序，实现 2D 游戏中的 Y 轴排序效果（也称为 2.5D 效果）。这使得 Y 坐标较大的实体（在屏幕下方）会渲染在 Y 坐标较小的实体（在屏幕上方）之上。
+
+### 类定义
+
+```cpp
+class YSortSystem {
+public:
+    YSortSystem() = default;
+    
+    void update(entt::registry& registry);
+};
+```
+
+### 处理流程
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                       YSortSystem                           │
+├─────────────────────────────────────────────────────────────┤
+│  1. 查询具有 TransformComponent 和 RenderComponent 的实体    │
+│                      ↓                                       │
+│  2. 读取 TransformComponent.position_.y                     │
+│                      ↓                                       │
+│  3. 更新 RenderComponent.y_index_                           │
+│     y_index = position.y                                    │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 代码示例
+
+```cpp
+void YSortSystem::update(entt::registry& registry) {
+    auto view = registry.view<TransformComponent, RenderComponent>();
+    
+    for (auto entity : view) {
+        const auto& transform = view.get<TransformComponent>(entity);
+        auto& render = view.get<RenderComponent>(entity);
+        
+        // 更新 Y 轴索引为实体的 Y 坐标
+        render.y_index_ = transform.position_.y;
+    }
+}
+```
+
+### 使用场景
+
+- 2D 角色与背景的遮挡关系
+- 2.5D 视角游戏中的深度排序
+- 任何需要根据 Y 坐标确定渲染顺序的场景
+
+### 与 RenderComponent 配合
+
+```cpp
+// 创建需要 Y 排序的实体
+auto entity = registry.create();
+registry.emplace<TransformComponent>(entity, glm::vec2(100.0f, 200.0f));
+registry.emplace<SpriteComponent>(entity, sprite);
+registry.emplace<RenderComponent>(entity, 1, 200.0f);  // layer=1, y_index 初始值
+
+// YSortSystem 会自动更新 y_index
+// RenderSystem 会根据 layer 和 y_index 排序后渲染
+```
+
+### 渲染排序规则
+
+```
+排序优先级：
+1. layer_index_ 较小的先渲染（底层）
+2. 同一 layer 内，y_index_ 较小的先渲染（上方）
+
+示例：
+┌────────────────────────────────┐
+│  layer=0 (背景层)              │  ← 最先渲染
+├────────────────────────────────┤
+│  layer=1, y=100 (角色A)        │
+│  layer=1, y=200 (角色B)        │  ← 后渲染（在上层）
+│  layer=1, y=300 (角色C)        │
+├────────────────────────────────┤
+│  layer=100 (UI层)              │  ← 最后渲染
+└────────────────────────────────┘
+```

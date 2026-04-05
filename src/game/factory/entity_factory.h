@@ -51,6 +51,23 @@ public:
                                  int level = 1,
                                  int rarity = 1);
 
+    entt::entity createUnitPrep(entt::id_type name_id,
+                                entt::id_type class_id,
+                                const glm::vec2& position,
+                                int cost,
+                                int level = 1,
+                                int rarity = 1);
+
+    entt::entity createProjectileVisual(entt::id_type projectile_id,
+                                        const glm::vec2& source_position,
+                                         const glm::vec2& target_position,
+                                         const glm::vec2& target_velocity);
+
+    entt::entity createEffectVisual(entt::id_type effect_id,
+                                    const glm::vec2& position);
+
+    [[nodiscard]] int getPlayerUnitCost(entt::id_type class_id, int rarity = 1) const;
+
 private:
     entt::registry& registry_;
     const BlueprintManager& blueprint_manager_;

@@ -365,7 +365,7 @@ namespace engine::loader {
                 }
 
                 if (!frames.empty()) {
-                    animation = engine::component::Animation(std::move(frames), true);
+                    animation = engine::component::Animation(std::move(frames), {}, true);
                 }
             }
 

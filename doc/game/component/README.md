@@ -1,6 +1,25 @@
 # Component 组件模块
 
+> **版本**: 1.0.0  
+> **最后更新**: 2026-02-15  
+> **相关文档**: [系统模块](../system/README.md) | [工厂模块](../factory/README.md)
+
 Component 模块定义了游戏特有的 ECS 组件，用于描述游戏实体的属性和状态。
+
+---
+
+## 目录
+
+- [类/结构概览](#类结构概览)
+- [TargetComponent](#targetcomponent)
+- [PlayerComponent](#playercomponent)
+- [BlockerComponent](#blockercomponent)
+- [BlockedByComponent](#blockedbycomponent)
+- [StatsComponent](#statscomponent)
+- [ClassNameComponent](#classnamecomponent)
+- [EnemyComponent](#enemycomponent)
+
+---
 
 ## 类/结构概览
 
@@ -31,6 +50,87 @@ struct TargetComponent {
 ---
 
 ## PlayerComponent
+
+**文件**: `src/game/component/player_component.h`
+
+玩家组件，标记实体为玩家单位，存储放置消耗等属性。
+
+```cpp
+struct PlayerComponent {
+    int cost_;  // 放置消耗（金币/资源）
+};
+```
+
+### 使用示例
+
+```cpp
+// 创建玩家单位
+auto player_unit = registry.create();
+registry.emplace<game::component::PlayerComponent>(player_unit, 100);  // 消耗 100 金币
+registry.emplace<game::component::StatsComponent>(player_unit, 100.0f, 100.0f, 20.0f, 5.0f, 50.0f, 1.0f, 0.0f, 1, 1);
+```
+
+---
+
+## BlockerComponent
+
+**文件**: `src/game/component/blocker_component.h`
+
+阻挡者组件，用于近战单位。存储该单位可以同时阻挡的敌人数量上限和当前阻挡数量。
+
+```cpp
+struct BlockerComponent {
+    int max_block_count_;      // 最大阻挡数
+    std::vector<entt::entity> blocked_entities_;  // 当前阻挡的敌人列表
+};
+```
+
+### 字段说明
+
+| 字段 | 类型 | 描述 |
+|------|------|------|
+| `max_block_count_` | `int` | 最大可阻挡敌人数量 |
+| `blocked_entities_` | `std::vector<entt::entity>` | 当前被阻挡的敌人实体列表 |
+
+### 使用示例
+
+```cpp
+// 创建近战阻挡单位
+auto blocker = registry.create();
+registry.emplace<game::component::BlockerComponent>(blocker, 3);  // 最多阻挡 3 个敌人
+```
+
+### 相关系统
+
+- [BlockSystem](../system/README.md#blocksystem) - 处理阻挡逻辑
+
+---
+
+## BlockedByComponent
+
+**文件**: `src/game/component/blocked_by_component.h`
+
+被阻挡组件，附加在被阻挡的敌人身上，记录阻挡者的引用。
+
+```cpp
+struct BlockedByComponent {
+    entt::entity blocker_entity_{entt::null};  // 阻挡者实体
+};
+```
+
+### 使用示例
+
+```cpp
+// 当敌人被阻挡时
+registry.emplace<game::component::BlockedByComponent>(enemy, blocker_entity);
+```
+
+### 相关系统
+
+- [BlockSystem](../system/README.md#blocksystem) - 添加此组件
+- [OrientationSystem](../system/README.md#orientationsystem) - 根据此组件调整朝向
+
+---
 
 ## StatsComponent
 

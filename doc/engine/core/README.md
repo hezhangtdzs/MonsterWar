@@ -1,6 +1,25 @@
 # Core 核心模块
 
+> **版本**: 1.0.0  
+> **最后更新**: 2026-02-15  
+> **相关文档**: [主文档](../../README.md) | [场景模块](../scene/README.md) | [ECS 架构](../../ECS_ARCHITECTURE.md)
+
 Core 模块是游戏引擎的基础层，负责游戏生命周期管理、配置、时间计算和游戏状态管理。
+
+---
+
+## 目录
+
+- [类概览](#类概览)
+- [GameApp](#gameapp)
+- [Context](#context)
+- [Config](#config)
+- [GameState](#gamestate)
+- [Time](#time)
+- [架构设计](#架构设计)
+- [最佳实践](#最佳实践)
+
+---
 
 ## 类概览
 
@@ -42,23 +61,9 @@ public:
     GameApp& operator=(GameApp&&) = delete;
     
     void run();  // 运行游戏主循环
-    void stop(); // 停止游戏
     
     // 设置初始化回调
-    void setOnInit(std::function<void(engine::scene::SceneManager&)> callback);
-    
-    // 获取各子系统
-    engine::core::Time* getTime() const;
-    engine::resource::ResourceManager* getResourceManager() const;
-    engine::render::Renderer* getRenderer() const;
-    engine::render::TextRenderer* getTextRenderer() const;
-    engine::render::Camera* getCamera() const;
-    engine::core::Config* getConfig() const;
-    engine::input::InputManager* getInputManager() const;
-    engine::core::Context* getContext() const;
-    engine::scene::SceneManager* getSceneManager() const;
-    engine::audio::IAudioPlayer* getAudioPlayer() const;
-    engine::core::GameState* getGameState() const;
+    void setOnInitCallback(std::function<void(engine::core::Context&)> callback);
 };
 ```
 
@@ -66,14 +71,14 @@ public:
 
 ```cpp
 #include "engine/core/game_app.h"
-#include "engine/scene/scene_manager.h"
+#include "engine/core/context.h"
 
 int main() {
     engine::core::GameApp app;
     
     // 设置初始化回调
-    app.setOnInit([](engine::scene::SceneManager& scene_manager) {
-        // 在这里创建和注册初始场景
+    app.setOnInitCallback([](engine::core::Context& context) {
+        // 在这里通过 Context 访问各系统并初始化场景
     });
     
     // 运行游戏
@@ -102,6 +107,7 @@ class Context final {
 public:
     Context(engine::render::Renderer& renderer,
             engine::render::TextRenderer& text_renderer,
+            entt::dispatcher& dispatcher,
             engine::render::Camera& camera,
             engine::resource::ResourceManager& resource_manager,
             engine::input::InputManager& input_manager,
@@ -120,6 +126,7 @@ public:
     engine::resource::ResourceManager& getResourceManager();
     engine::input::InputManager& getInputManager();
     engine::core::GameState& getGameState();
+    entt::dispatcher& getDispatcher();
 };
 ```
 
@@ -135,6 +142,9 @@ void SomeComponent::update(float deltaTime, engine::core::Context& context) {
     
     // 通过上下文访问摄像机
     auto& camera = context.getCamera();
+    
+    // 通过上下文访问事件分发器
+    auto& dispatcher = context.getDispatcher();
 }
 ```
 
@@ -334,6 +344,148 @@ void GameApp::run() {
 
 ---
 
+## GameApp 初始化流程
+
+```mermaid
+flowchart TD
+    A[GameApp::run] --> B[init]
+    B --> C{initConfig}
+    C -->|成功| D{initSDL}
+    D -->|成功| E{initDispatcher}
+    E -->|成功| F{initInputManager}
+    F -->|成功| G{initTime}
+    G -->|成功| H{initResourceManager}
+    H -->|成功| I{initAudioPlayer}
+    I -->|成功| J{initRenderer}
+    J -->|成功| K{initGameState}
+    K -->|成功| L{initTextRenderer}
+    L -->|成功| M{initCamera}
+    M -->|成功| N{initContext}
+    N -->|成功| O{initSceneManager}
+    O -->|成功| P[调用 on_init_ 回调]
+    P --> Q[连接 QuitEvent]
+    Q --> R[进入主循环]
+    
+    C -->|失败| FAIL[初始化失败]
+    D -->|失败| FAIL
+    E -->|失败| FAIL
+    F -->|失败| FAIL
+    G -->|失败| FAIL
+    H -->|失败| FAIL
+    I -->|失败| FAIL
+    J -->|失败| FAIL
+    K -->|失败| FAIL
+    L -->|失败| FAIL
+    M -->|失败| FAIL
+    N -->|失败| FAIL
+    O -->|失败| FAIL
+```
+
+## GameApp 主循环
+
+```mermaid
+flowchart LR
+    subgraph MainLoop[主循环]
+        A[time_->update] --> B[handleEvents]
+        B --> C[update]
+        C --> D[render]
+        D --> E{is_running_?}
+        E -->|是| A
+        E -->|否| F[close]
+    end
+    
+    subgraph HandleEvents[事件处理]
+        B --> B1[InputManager::Update]
+        B1 --> B2[SceneManager::handleInput]
+    end
+    
+    subgraph Update[更新逻辑]
+        C --> C1[SceneManager::update]
+        C1 --> C2[dispatcher_->update]
+    end
+    
+    subgraph Render[渲染]
+        D --> D1[Renderer::clearScreen]
+        D1 --> D2[SceneManager::render]
+        D2 --> D3[Renderer::present]
+    end
+```
+
+## Context 设计模式
+
+Context 类采用了 **服务定位器模式 (Service Locator Pattern)** 的变体，作为引擎各系统之间的桥梁：
+
+### 设计优势
+
+1. **解耦系统依赖**：各系统通过 Context 访问其他系统，避免直接依赖
+2. **统一访问点**：所有核心系统通过一个对象访问，简化代码
+3. **便于测试**：可以轻松替换 Mock 对象进行单元测试
+4. **生命周期管理**：系统引用的生命周期由 GameApp 统一管理
+
+### 访问的系统
+
+| 系统 | 获取方法 | 用途 |
+|------|----------|------|
+| Renderer | `getRenderer()` | 2D 渲染操作 |
+| TextRenderer | `getTextRenderer()` | 文本渲染 |
+| Camera | `getCamera()` | 视口和坐标转换 |
+| ResourceManager | `getResourceManager()` | 资源加载和缓存 |
+| InputManager | `getInputManager()` | 输入状态查询 |
+| GameState | `getGameState()` | 游戏状态管理 |
+| Dispatcher | `getDispatcher()` | 事件分发 |
+
+## Time 帧率限制机制
+
+```mermaid
+flowchart TD
+    A[帧开始] --> B[记录 frame_start_time_]
+    B --> C[计算 delta_time_]
+    C --> D[游戏逻辑更新]
+    D --> E[渲染]
+    E --> F{target_fps_ > 0?}
+    F -->|是| G[计算目标帧时间]
+    G --> H{实际耗时 < 目标帧时间?}
+    H -->|是| I[SDL_Delay 延迟]
+    H -->|否| J[继续下一帧]
+    I --> J
+    F -->|否| J
+```
+
+### 帧率限制原理
+
+```cpp
+void Time::limitFrameRate(float current_delta_time) {
+    if (target_fps_ > 0) {
+        double target_frame_time = 1.0 / target_fps_;
+        if (current_delta_time < target_frame_time) {
+            SDL_Delay(static_cast<Uint32>((target_frame_time - current_delta_time) * 1000.0));
+        }
+    }
+}
+```
+
+## GameState 状态转换
+
+```mermaid
+stateDiagram-v2
+    [*] --> Title: 游戏启动
+    Title --> Playing: 开始游戏
+    Playing --> Paused: 暂停
+    Paused --> Playing: 继续
+    Playing --> GameOver: 游戏结束
+    GameOver --> Title: 重新开始
+    GameOver --> [*]: 退出游戏
+```
+
+### 状态说明
+
+| 状态 | 描述 | 典型行为 |
+|------|------|----------|
+| Title | 标题画面 | 显示游戏标题、开始按钮 |
+| Playing | 游戏进行中 | 正常游戏逻辑更新 |
+| Paused | 暂停状态 | 停止游戏逻辑，显示暂停菜单 |
+| GameOver | 游戏结束 | 显示结算画面、重玩选项 |
+
 ## 模块依赖图
 
 ```mermaid
@@ -348,9 +500,54 @@ graph LR
     Context --> ResourceManager
     Context --> InputManager
     Context --> GameState
+    Context --> Dispatcher
     
     Config --> nlohmann_json
     
     style GameApp fill:#f9f,stroke:#333,stroke-width:2px
     style Context fill:#bbf,stroke:#333,stroke-width:2px
+```
+
+## 最佳实践
+
+### 1. 使用 Context 传递依赖
+
+```cpp
+// 推荐：通过 Context 访问系统
+class MyScene : public engine::scene::Scene {
+    void update(float dt) override {
+        auto& renderer = context_.getRenderer();
+        auto& resources = context_.getResourceManager();
+        // ...
+    }
+};
+
+// 避免：直接持有系统引用
+class BadScene {
+    engine::render::Renderer* renderer_;  // 不推荐
+};
+```
+
+### 2. 时间缩放用于特殊效果
+
+```cpp
+// 慢动作效果
+time_->setTimeScale(0.3f);
+
+// 暂停游戏
+time_->setTimeScale(0.0f);
+
+// 恢复正常
+time_->setTimeScale(1.0f);
+```
+
+### 3. 配置文件管理
+
+```cpp
+// 加载配置
+Config config("assets/config.json");
+
+// 运行时修改并保存
+config.master_volume_ = 0.8f;
+config.saveToFile("assets/config.json");
 ```

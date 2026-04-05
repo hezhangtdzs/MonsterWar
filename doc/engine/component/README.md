@@ -1,8 +1,26 @@
 # 组件模块 (Component Module)
 
-## 概述
+> **版本**: 1.0.0  
+> **最后更新**: 2026-02-15  
+> **相关文档**: [系统模块](../system/README.md) | [ECS 架构](../../ECS_ARCHITECTURE.md)
 
 组件模块是 ECS 架构中的数据层，负责定义游戏中所有可复用的数据结构。每个组件都是纯数据结构（POD），只包含数据而不包含任何逻辑。这种设计使得数据可以高效地批量处理，同时也便于序列化和网络同步。
+
+---
+
+## 目录
+
+- [组件列表](#组件列表)
+- [设计原则](#设计原则)
+- [TransformComponent](#transformcomponent)
+- [VelocityComponent](#velocitycomponent)
+- [SpriteComponent](#spritecomponent)
+- [AnimationComponent](#animationcomponent)
+- [其他组件](#其他组件)
+- [添加新组件](#添加新组件)
+- [性能考虑](#性能考虑)
+
+---
 
 ## 组件列表
 
@@ -12,6 +30,11 @@
 | [VelocityComponent](#velocitycomponent) | 线速度 | 无 | `velocity_component.h` |
 | [SpriteComponent](#spritecomponent) | 精灵渲染数据 | 无 | `sprite_component.h` |
 | [AnimationComponent](#animationcomponent) | 动画状态和数据 | 无 | `animation_component.h` |
+| [RenderComponent](#rendercomponent) | 渲染层级和排序 | 无 | `render_component.h` |
+| [NameComponent](#namecomponent) | 实体名称 | 无 | `name_component.h` |
+| [ParallaxComponent](#parallaxcomponent) | 视差滚动 | 无 | `parallax_component.h` |
+| [TileLayerComponent](#tilelayercomponent) | 瓦片图层 | 无 | `tilelayer_component.h` |
+| [AudioComponent](#audiocomponent) | 音频播放 | 无 | `audio_component.h` |
 
 ## 设计原则
 
@@ -524,5 +547,116 @@ if (registry.all_of<TransformComponent, SpriteComponent>(entity)) {
 - **VelocityComponent**：定义运动属性
 - **SpriteComponent**：定义视觉属性
 - **AnimationComponent**：定义动画属性
+- **RenderComponent**：定义渲染层级和 Y 轴排序
+- **NameComponent**：定义实体名称（用于调试）
+- **ParallaxComponent**：定义视差滚动效果
+- **TileLayerComponent**：定义瓦片地图图层
+- **AudioComponent**：定义音频播放配置
 
 通过组合这些基础组件，可以创建各种游戏实体，而系统则负责处理这些组件的数据。
+
+---
+
+## RenderComponent
+
+### 功能说明
+
+RenderComponent 定义实体的渲染层级和 Y 轴排序索引，用于控制渲染顺序。
+
+### 数据结构
+
+```cpp
+struct RenderComponent {
+    int layer_index_{0};     // 渲染层级（越小越先渲染）
+    float y_index_{0.0f};    // Y 轴排序索引（用于 2.5D 效果）
+};
+```
+
+### 使用示例
+
+```cpp
+// 创建需要 Y 排序的实体
+auto entity = registry.create();
+registry.emplace<TransformComponent>(entity, glm::vec2(100.0f, 200.0f));
+registry.emplace<SpriteComponent>(entity, sprite);
+registry.emplace<RenderComponent>(entity, 1, 200.0f);  // layer=1, y_index 初始值
+```
+
+---
+
+## NameComponent
+
+### 功能说明
+
+NameComponent 为实体提供一个名称，主要用于调试和日志输出。
+
+### 数据结构
+
+```cpp
+struct NameComponent {
+    std::string name_;
+};
+```
+
+---
+
+## ParallaxComponent
+
+### 功能说明
+
+ParallaxComponent 定义视差滚动参数，用于创建背景层的深度效果。
+
+### 数据结构
+
+```cpp
+struct ParallaxComponent {
+    float parallax_x_{1.0f};  // X 轴视差系数
+    float parallax_y_{1.0f};  // Y 轴视差系数
+};
+```
+
+### 使用示例
+
+```cpp
+// 创建视差背景
+auto bg = registry.create();
+registry.emplace<TransformComponent>(bg, glm::vec2(0.0f, 0.0f));
+registry.emplace<SpriteComponent>(bg, background_sprite);
+registry.emplace<ParallaxComponent>(bg, 0.5f, 0.5f);  // 慢速滚动
+```
+
+---
+
+## TileLayerComponent
+
+### 功能说明
+
+TileLayerComponent 存储瓦片地图图层的数据，用于渲染和碰撞检测。
+
+### 数据结构
+
+```cpp
+struct TileLayerComponent {
+    std::vector<entt::entity> tiles_;  // 瓦片实体列表
+    // 其他瓦片图层属性...
+};
+```
+
+---
+
+## AudioComponent
+
+### 功能说明
+
+AudioComponent 定义实体的音频播放配置，关联音效资源。
+
+### 数据结构
+
+```cpp
+struct AudioComponent {
+    std::unordered_map<entt::id_type, std::string> sounds_;  // 音效映射
+    
+    void registerSound(entt::id_type id, const std::string& path);
+    void play(entt::id_type id);
+};
+```

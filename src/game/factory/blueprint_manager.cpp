@@ -29,6 +29,7 @@
 #include <entt/core/hashed_string.hpp>
 
 #include "../../engine/resource/resource_manager.h"
+#include "../../engine/utils/logging.h"
 
 namespace game::factory {
 
@@ -38,7 +39,7 @@ namespace game::factory {
  */
 BlueprintManager::BlueprintManager(engine::resource::ResourceManager& resource_manager)
     : resource_manager_(resource_manager) {
-    spdlog::info("BlueprintManager initialized");
+    ENGINE_LOG_INFO("BlueprintManager initialized");
 }
 
 /**
@@ -59,7 +60,7 @@ bool BlueprintManager::loadEnemyClassBlueprints(std::string_view enemy_json_path
     std::string path_str(enemy_json_path);
     std::ifstream input_file(path_str);
     if (!input_file.is_open()) {
-        spdlog::error("无法打开敌人蓝图文件: {}", enemy_json_path);
+        ENGINE_LOG_ERROR("无法打开敌人蓝图文件: {}", enemy_json_path);
         return false;
     }
 
@@ -67,7 +68,7 @@ bool BlueprintManager::loadEnemyClassBlueprints(std::string_view enemy_json_path
     try {
         input_file >> json_data;
     } catch (const nlohmann::json::exception& e) {
-        spdlog::error("解析敌人蓝图 JSON 失败: {}", e.what());
+        ENGINE_LOG_ERROR("解析敌人蓝图 JSON 失败: {}", e.what());
         return false;
     }
 
@@ -96,10 +97,10 @@ bool BlueprintManager::loadEnemyClassBlueprints(std::string_view enemy_json_path
 
         // 存入映射表
         enemy_class_blueprints_.emplace(class_id, std::move(blueprint));
-        spdlog::info("已加载敌人蓝图: {} (ID: {})", class_name, class_id);
+        ENGINE_LOG_INFO("已加载敌人蓝图: {} (ID: {})", class_name, class_id);
     }
 
-    spdlog::info("成功加载 {} 个敌人蓝图", enemy_class_blueprints_.size());
+    ENGINE_LOG_INFO("成功加载 {} 个敌人蓝图", enemy_class_blueprints_.size());
     return true;
 }
 
@@ -112,7 +113,7 @@ bool BlueprintManager::loadPlayerClassBlueprints(std::string_view player_json_pa
     std::string path_str(player_json_path);
     std::ifstream input_file(path_str);
     if (!input_file.is_open()) {
-        spdlog::error("无法打开玩家蓝图文件: {}", player_json_path);
+        ENGINE_LOG_ERROR("无法打开玩家蓝图文件: {}", player_json_path);
         return false;
     }
 
@@ -120,7 +121,7 @@ bool BlueprintManager::loadPlayerClassBlueprints(std::string_view player_json_pa
     try {
         input_file >> json_data;
     } catch (const nlohmann::json::exception& e) {
-        spdlog::error("解析玩家蓝图 JSON 失败: {}", e.what());
+        ENGINE_LOG_ERROR("解析玩家蓝图 JSON 失败: {}", e.what());
         return false;
     }
 
@@ -149,10 +150,64 @@ bool BlueprintManager::loadPlayerClassBlueprints(std::string_view player_json_pa
 
         // 存入映射表
         player_class_blueprints_.emplace(class_id, std::move(blueprint));
-        spdlog::info("已加载玩家蓝图: {} (ID: {})", class_name, class_id);
+        ENGINE_LOG_INFO("已加载玩家蓝图: {} (ID: {})", class_name, class_id);
     }
 
-    spdlog::info("成功加载 {} 个玩家蓝图", player_class_blueprints_.size());
+    ENGINE_LOG_INFO("成功加载 {} 个玩家蓝图", player_class_blueprints_.size());
+    return true;
+}
+
+bool BlueprintManager::loadProjectileBlueprints(std::string_view projectile_json_path) {
+    std::string path_str(projectile_json_path);
+    std::ifstream input_file(path_str);
+    if (!input_file.is_open()) {
+        ENGINE_LOG_ERROR("无法打开投射物蓝图文件: {}", projectile_json_path);
+        return false;
+    }
+
+    nlohmann::json json_data;
+    try {
+        input_file >> json_data;
+    } catch (const nlohmann::json::exception& e) {
+        ENGINE_LOG_ERROR("解析投射物蓝图 JSON 失败: {}", e.what());
+        return false;
+    }
+
+    for (auto& [projectile_name, data_json] : json_data.items()) {
+        entt::id_type projectile_id = entt::hashed_string(projectile_name.c_str());
+        auto blueprint = parseProjectile(data_json, projectile_id);
+        projectile_blueprints_.emplace(projectile_id, std::move(blueprint));
+        ENGINE_LOG_INFO("已加载投射物蓝图: {} (ID: {})", projectile_name, projectile_id);
+    }
+
+    ENGINE_LOG_INFO("成功加载 {} 个投射物蓝图", projectile_blueprints_.size());
+    return true;
+}
+
+bool BlueprintManager::loadEffectBlueprints(std::string_view effect_json_path) {
+    std::string path_str(effect_json_path);
+    std::ifstream input_file(path_str);
+    if (!input_file.is_open()) {
+        ENGINE_LOG_ERROR("无法打开特效蓝图文件: {}", effect_json_path);
+        return false;
+    }
+
+    nlohmann::json json_data;
+    try {
+        input_file >> json_data;
+    } catch (const nlohmann::json::exception& e) {
+        ENGINE_LOG_ERROR("解析特效蓝图 JSON 失败: {}", e.what());
+        return false;
+    }
+
+    for (auto& [effect_name, data_json] : json_data.items()) {
+        entt::id_type effect_id = entt::hashed_string(effect_name.c_str());
+        auto blueprint = parseEffect(data_json, effect_id);
+        effect_blueprints_.emplace(effect_id, std::move(blueprint));
+        ENGINE_LOG_INFO("已加载特效蓝图: {} (ID: {})", effect_name, effect_id);
+    }
+
+    ENGINE_LOG_INFO("成功加载 {} 个特效蓝图", effect_blueprints_.size());
     return true;
 }
 
@@ -192,6 +247,22 @@ bool BlueprintManager::hasEnemyClassBlueprint(entt::id_type id) const {
  */
 bool BlueprintManager::hasPlayerClassBlueprint(entt::id_type id) const {
     return player_class_blueprints_.find(id) != player_class_blueprints_.end();
+}
+
+bool BlueprintManager::hasProjectileBlueprint(entt::id_type id) const {
+    return projectile_blueprints_.find(id) != projectile_blueprints_.end();
+}
+
+bool BlueprintManager::hasEffectBlueprint(entt::id_type id) const {
+    return effect_blueprints_.find(id) != effect_blueprints_.end();
+}
+
+const data::ProjectileBlueprint& BlueprintManager::getProjectileBlueprint(entt::id_type id) const {
+    return projectile_blueprints_.at(id);
+}
+
+const data::EffectBlueprint& BlueprintManager::getEffectBlueprint(entt::id_type id) const {
+    return effect_blueprints_.at(id);
 }
 
 /**
@@ -238,7 +309,8 @@ data::SpriteBlueprint BlueprintManager::parseSprite(const nlohmann::json& json) 
  * @return 解析后的动画蓝图映射
  */
 std::unordered_map<entt::id_type, data::AnimationBlueprint>
-BlueprintManager::parseAnimationsMap(const nlohmann::json& json) const {
+BlueprintManager::parseAnimationsMap(const nlohmann::json& json) const 
+{
     std::unordered_map<entt::id_type, data::AnimationBlueprint> animations;
 
     if (!json.contains("animation")) {
@@ -256,6 +328,14 @@ BlueprintManager::parseAnimationsMap(const nlohmann::json& json) const {
             anim.frames_ = anim_data["frames"].get<std::vector<int>>();
         }
 
+        if (anim_data.contains("events") && anim_data["events"].is_object()) {
+            for (auto& [event_name, frame] : anim_data["events"].items()) {
+                int frame_index = frame.get<int>();
+                entt::id_type event_id = entt::hashed_string(event_name.c_str());
+                anim.events_.emplace(frame_index, event_id);
+                ENGINE_LOG_INFO("已解析动画事件: {} (帧: {})", event_name, frame_index);
+            }
+        }
         animations.emplace(anim_name_id, std::move(anim));
     }
 
@@ -300,6 +380,9 @@ data::EnemyBlueprint BlueprintManager::parseEnemy(const nlohmann::json& json) co
     data::EnemyBlueprint enemy;
     enemy.ranged_ = json.value("ranged", false);
     enemy.speed_ = json.value("speed", 100.0f);
+    if (json.contains("projectile")) {
+        enemy.projectile_id_ = entt::hashed_string(json["projectile"].get<std::string>().c_str()).value();
+    }
     return enemy;
 }
 
@@ -335,6 +418,57 @@ data::DisplayInfoBlueprint BlueprintManager::parseDisplayInfo(const nlohmann::js
     display_info.name_ = json.value("name", "Unknown");
     display_info.description_ = json.value("description", "");
     return display_info;
+}
+
+data::ProjectileBlueprint BlueprintManager::parseProjectile(const nlohmann::json& json, entt::id_type projectile_id) {
+    data::ProjectileBlueprint projectile;
+    projectile.projectile_id_ = projectile_id;
+    projectile.sprite_.path_ = json.value("sprite_sheet", "");
+    projectile.sprite_.id_ = entt::hashed_string(projectile.sprite_.path_.c_str());
+    projectile.sprite_.face_right_ = true;
+
+    float x = json.value("x", 0.0f);
+    float y = json.value("y", 0.0f);
+    float width = json.value("width", 0.0f);
+    float height = json.value("height", 0.0f);
+    projectile.sprite_.src_rect_ = engine::utils::Rect{ x, y, width, height };
+    projectile.sprite_.size_ = glm::vec2{ width, height };
+    projectile.sprite_.offset_ = glm::vec2{ json.value("offset_x", 0.0f), json.value("offset_y", 0.0f) };
+    projectile.arc_height_ = json.value("arc_height", 0.0f);
+    projectile.total_flight_time_ = json.value("total_flight_time", 0.5f);
+    projectile.rotation_offset_deg_ = json.value("rotation_offset_deg", 0.0f);
+    resource_manager_.loadTexture(projectile.sprite_.id_, projectile.sprite_.path_);
+    return projectile;
+}
+
+data::EffectBlueprint BlueprintManager::parseEffect(const nlohmann::json& json, entt::id_type effect_id) {
+    data::EffectBlueprint effect;
+    effect.effect_id_ = effect_id;
+    effect.sprite_.path_ = json.value("sprite_sheet", "");
+    effect.sprite_.id_ = entt::hashed_string(effect.sprite_.path_.c_str());
+    effect.sprite_.face_right_ = true;
+
+    float x = json.value("x", 0.0f);
+    float y = json.value("y", 0.0f);
+    float width = json.value("width", 0.0f);
+    float height = json.value("height", 0.0f);
+    float size_x = json.value("size_x", width);
+    float size_y = json.value("size_y", height);
+    effect.sprite_.src_rect_ = engine::utils::Rect{ x, y, width, height };
+    effect.sprite_.size_ = glm::vec2{ size_x, size_y };
+    effect.sprite_.offset_ = glm::vec2{ json.value("offset_x", 0.0f), json.value("offset_y", 0.0f) };
+
+    if (json.contains("animation") && json["animation"].is_object()) {
+        const auto& anim_json = json["animation"];
+        effect.animation_.ms_per_frame_ = anim_json.value("duration", 50.0f);
+        effect.animation_.row_ = anim_json.value("row", 0);
+        if (anim_json.contains("frames") && anim_json["frames"].is_array()) {
+            effect.animation_.frames_ = anim_json["frames"].get<std::vector<int>>();
+        }
+    }
+
+    resource_manager_.loadTexture(effect.sprite_.id_, effect.sprite_.path_);
+    return effect;
 }
 
 } // namespace game::factory

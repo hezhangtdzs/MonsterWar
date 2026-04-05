@@ -34,5 +34,6 @@ class RenderSystem;      ///< 渲染系统前向声明
 class AnimationSystem;   ///< 动画系统前向声明
 class MovementSystem;    ///< 移动系统前向声明
 class YSortSystem;      ///< Y轴排序系统前向声明
+class AudioSystem;      ///< 音频系统前向声明
 
 }   // namespace engine::system

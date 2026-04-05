@@ -10,5 +10,11 @@ class TimerSystem;
 class AttackStarterSystem;
 class AnimationStateSystem;
 class OrientationSystem;
+class AnimationEventsSystem;
+class CombatResolveSystem;
+class ProjectileVisualSystem;
+class PlaceUnitSystem;
+class RenderRangeSystem;
+class GameRuleSystem;
 
 }   // namespace game::system

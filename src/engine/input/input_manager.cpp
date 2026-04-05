@@ -2,6 +2,8 @@
 #include "spdlog/spdlog.h"
 #include "../utils/events.h"
 #include "../core/config.h"
+#include <imgui.h>
+#include <backends/imgui_impl_sdl3.h>
 
 namespace engine::input {
 
@@ -160,6 +162,17 @@ glm::vec2 InputManager::getLogicalMousePosition() const
  */
 void InputManager::processEvent(const SDL_Event& event)
 {
+   if (ImGui::GetCurrentContext()) {
+		ImGui_ImplSDL3_ProcessEvent(&event);
+		const ImGuiIO& io = ImGui::GetIO();
+		if ((event.type == SDL_EVENT_KEY_DOWN || event.type == SDL_EVENT_KEY_UP) && io.WantCaptureKeyboard) {
+			return;
+		}
+		if ((event.type == SDL_EVENT_MOUSE_BUTTON_DOWN || event.type == SDL_EVENT_MOUSE_BUTTON_UP || event.type == SDL_EVENT_MOUSE_MOTION || event.type == SDL_EVENT_MOUSE_WHEEL) && io.WantCaptureMouse) {
+			return;
+		}
+	}
+
 	switch (event.type) {
 	case SDL_EVENT_KEY_DOWN:
 	case SDL_EVENT_KEY_UP: {

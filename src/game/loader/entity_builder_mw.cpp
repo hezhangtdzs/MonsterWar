@@ -1,5 +1,7 @@
 #include "entity_builder_mw.h"
 #include "spdlog/spdlog.h"
+#include "../defs/tags.h"
+#include "../../engine/component/tilelayer_component.h"
 namespace game::loader {
     EntityBuilderMW::EntityBuilderMW(engine::loader::LevelLoader &level_loader, engine::core::Context &context, entt::registry &registry, std::unordered_map<int, game::data::WaypointNode> &waypoint_nodes, std::vector<int> &start_points)
     : BasicEntityBuilder(level_loader, context, registry),
@@ -17,6 +19,7 @@ namespace game::loader {
         } else {
 
             BasicEntityBuilder::build();
+            buildPlacementTag();
         }
         return this;
     }
@@ -63,6 +66,37 @@ namespace game::loader {
         
         waypoint_nodes_[id] = std::move(node);
       
+    }
+
+    void EntityBuilderMW::buildPlacementTag()
+    {
+        if (!tile_info_ || !tile_info_->properties_.has_value()) {
+            return;
+        }
+
+        const auto& tile_json = tile_info_->properties_.value();
+        if (!tile_json.contains("properties") || !tile_json["properties"].is_array()) {
+            return;
+        }
+
+        const auto& props = tile_json["properties"];
+        for (const auto& prop : props) {
+            if (!prop.contains("name") || !prop.contains("value")) {
+                continue;
+            }
+
+            if (prop.value("name", "") != "place") {
+                continue;
+            }
+
+            const auto place_type = prop.value("value", "");
+            if (place_type == "melee") {
+                registry_.emplace_or_replace<game::defs::MeleePlaceTag>(entity_id_);
+            } else if (place_type == "range") {
+                registry_.emplace_or_replace<game::defs::RangePlaceTag>(entity_id_);
+            }
+            return;
+        }
     }
 
 } // namespace game::loader

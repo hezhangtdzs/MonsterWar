@@ -7,6 +7,7 @@
 #include "game/component/blocked_by_component.h"
 #include "game/defs/tags.h"
 #include "engine/utils/events.h"
+#include "../../engine/utils/logging.h"
 
 namespace game::system {
 
@@ -27,6 +28,7 @@ void AttackStarterSystem::update(entt::registry& registry, entt::dispatcher& dis
 
         // 发送播放攻击动画事件
         dispatcher.enqueue(PlayAnimationEvent{enemy_entity, "attack"_hs, false});
+        ENGINE_LOG_DEBUG("敌方近战攻击启动 entity={}", entt::to_integral(enemy_entity));
     }
 
     // 2. 处理远程敌人（在射程内有目标，且未被阻挡）
@@ -44,6 +46,7 @@ void AttackStarterSystem::update(entt::registry& registry, entt::dispatcher& dis
         }
 
         dispatcher.enqueue(PlayAnimationEvent{enemy_entity, "ranged_attack"_hs, false});
+        ENGINE_LOG_DEBUG("敌方远程攻击启动 entity={}", entt::to_integral(enemy_entity));
     }
 
     // 3. 处理玩家单位（攻击或治疗）
@@ -54,8 +57,10 @@ void AttackStarterSystem::update(entt::registry& registry, entt::dispatcher& dis
 
         if (registry.all_of<HealerTag>(player_entity)) {
             dispatcher.enqueue(PlayAnimationEvent{player_entity, "heal"_hs, false});
+            ENGINE_LOG_DEBUG("玩家治疗启动 entity={}", entt::to_integral(player_entity));
         } else {
             dispatcher.enqueue(PlayAnimationEvent{player_entity, "attack"_hs, false});
+            ENGINE_LOG_DEBUG("玩家攻击启动 entity={}", entt::to_integral(player_entity));
         }
     }
 }

@@ -1,6 +1,25 @@
 # System 系统模块
 
+> **相关文档**: [组件模块](../component/README.md) | [ECS 架构](../../ECS_ARCHITECTURE.md)
+
 System 模块包含游戏的核心逻辑系统，负责处理寻路、实体清理等游戏机制。
+
+---
+
+## 目录
+
+- [类/结构概览](#类结构概览)
+- [BlockSystem](#blocksystem)
+- [SetTargetSystem](#settargetsystem)
+- [TimerSystem](#timersystem)
+- [AttackStarterSystem](#attackstartersystem)
+- [AnimationStateSystem](#animationstatesystem)
+- [OrientationSystem](#orientationsystem)
+- [FollowPathSystem](#followpathsystem)
+- [RemoveDeadSystem](#removedeadsystem)
+- [系统执行顺序](#系统执行顺序)
+
+---
 
 ## 类/结构概览
 
@@ -260,3 +279,343 @@ remove_dead_system->update(registry);
 
 - [DeadTag](../defs/README.md#deadtag) - 死亡标记组件
 - [FollowPathSystem](#followpathsystem) - 标记到达终点的敌人
+
+---
+
+## 战斗系统流程
+
+游戏中的战斗逻辑由多个系统协作完成，形成完整的战斗循环：
+
+### 战斗系统架构
+
+```mermaid
+flowchart TB
+    subgraph 目标锁定阶段
+        A[SetTargetSystem] --> B{有目标?}
+        B -->|是| C[添加 TargetComponent]
+        B -->|否| D[无操作]
+    end
+    
+    subgraph 冷却阶段
+        E[TimerSystem] --> F{冷却结束?}
+        F -->|是| G[添加 AttackReadyTag]
+        F -->|否| H[继续计时]
+    end
+    
+    subgraph 攻击触发阶段
+        I[AttackStarterSystem] --> J{有目标且就绪?}
+        J -->|是| K[发送攻击动画事件]
+        K --> L[添加 ActionLockTag]
+        L --> M[重置冷却]
+    end
+    
+    subgraph 动画阶段
+        N[AnimationSystem] --> O[播放攻击动画]
+        O --> P[AnimationFinishedEvent]
+    end
+    
+    subgraph 收尾阶段
+        Q[AnimationStateSystem] --> R[移除 ActionLockTag]
+        R --> S[切换回 idle/walk]
+    end
+    
+    C --> E
+    G --> I
+    L --> N
+    P --> Q
+    S --> E
+```
+
+### 系统执行顺序
+
+```cpp
+void GameScene::update(float delta_time) {
+    // 1. 目标锁定
+    set_target_system_->update(registry_);
+    
+    // 2. 冷却计时
+    timer_system_->update(registry_, delta_time);
+    
+    // 3. 攻击触发
+    attack_starter_system_->update(registry_, dispatcher_);
+    
+    // 4. 阻挡处理
+    block_system_->update(registry_);
+    
+    // 5. 寻路移动
+    follow_path_system_->update(registry_, dispatcher_, waypoint_nodes_);
+    
+    // 6. 朝向更新
+    orientation_system_->update(registry_);
+    
+    // 7. 动画更新
+    animation_system_->update(delta_time);
+    
+    // 8. 基础移动
+    movement_system_->update(registry_, delta_time);
+    
+    // 9. 清理死亡实体
+    remove_dead_system_->update(registry_);
+}
+```
+
+### 组件与标签协作
+
+```mermaid
+graph LR
+    subgraph 攻击就绪状态
+        A[AttackReadyTag] --> B[可以攻击]
+    end
+    
+    subgraph 动作锁定状态
+        C[ActionLockTag] --> D[无法移动/切换动作]
+    end
+    
+    subgraph 目标锁定
+        E[TargetComponent] --> F[有攻击目标]
+    end
+    
+    subgraph 受伤状态
+        G[InjuredTag] --> H[血量不满]
+    end
+    
+    subgraph 死亡状态
+        I[DeadTag] --> J[等待删除]
+    end
+```
+
+---
+
+## BlockSystem 详细说明
+
+**文件**: `src/game/system/block_system.h`, `src/game/system/block_system.cpp`
+
+### 功能说明
+
+处理近战玩家单位（Blocker）对敌人的拦截。当敌人进入阻挡范围时建立阻挡关系。
+
+### 阻挡流程
+
+```mermaid
+sequenceDiagram
+    participant B as Blocker
+    participant E as Enemy
+    participant R as Registry
+    
+    Note over B: BlockerComponent.max_block_count > 0
+    Note over E: 敌人进入阻挡范围
+    
+    B->>R: 检查 blocked_entities_.size() < max_block_count
+    R-->>B: 可以阻挡
+    B->>E: 添加 BlockedByComponent
+    B->>R: 将 enemy 添加到 blocked_entities_
+    E->>E: 停止移动（速度设为 0）
+    
+    Note over E: 敌人被阻挡，开始攻击 Blocker
+```
+
+### 类定义
+
+```cpp
+class BlockSystem {
+public:
+    void update(entt::registry& registry, entt::dispatcher& dispatcher);
+    
+private:
+    static constexpr float BLOCK_RADIUS = 30.0f;  // 阻挡范围
+};
+```
+
+### 核心逻辑
+
+```cpp
+void BlockSystem::update(entt::registry& registry, entt::dispatcher& dispatcher) {
+    auto blockers = registry.view<BlockerComponent, TransformComponent>();
+    auto enemies = registry.view<EnemyComponent, TransformComponent, VelocityComponent>();
+    
+    for (auto blocker : blockers) {
+        auto& blocker_comp = blockers.get<BlockerComponent>(blocker);
+        auto& blocker_pos = blockers.get<TransformComponent>(blocker);
+        
+        // 检查是否还能阻挡更多敌人
+        if (blocker_comp.blocked_entities_.size() >= blocker_comp.max_block_count_) {
+            continue;
+        }
+        
+        for (auto enemy : enemies) {
+            // 跳过已被阻挡的敌人
+            if (registry.all_of<BlockedByComponent>(enemy)) continue;
+            
+            auto& enemy_pos = enemies.get<TransformComponent>(enemy);
+            float distance = glm::length(enemy_pos.position_ - blocker_pos.position_);
+            
+            if (distance < BLOCK_RADIUS) {
+                // 建立阻挡关系
+                registry.emplace<BlockedByComponent>(enemy, blocker);
+                blocker_comp.blocked_entities_.push_back(enemy);
+                
+                // 停止敌人移动
+                enemies.get<VelocityComponent>(enemy).velocity_ = glm::vec2(0.0f);
+            }
+        }
+    }
+}
+```
+
+---
+
+## SetTargetSystem 详细说明
+
+**文件**: `src/game/system/set_target_system.h`, `src/game/system/set_target_system.cpp`
+
+### 功能说明
+
+统一处理所有单位的目标锁定逻辑，支持攻击目标和治疗目标两种模式。
+
+### 类定义
+
+```cpp
+class SetTargetSystem {
+public:
+    void update(entt::registry& registry);
+
+private:
+    void updateHasTarget(entt::registry& registry);
+    void updateNoTargetPlayer(entt::registry& registry);
+    void updateNoTargetEnemy(entt::registry& registry);
+    void updateHealer(entt::registry& registry);
+};
+```
+
+### 私有方法说明
+
+| 方法 | 描述 |
+|------|------|
+| `updateHasTarget()` | 处理已有目标的逻辑，校验距离和存活状态 |
+| `updateNoTargetPlayer()` | 为没有目标的玩家单位寻找敌人 |
+| `updateNoTargetEnemy()` | 为没有目标的敌方远程单位寻找射程内的目标 |
+| `updateHealer()` | 为没有目标的治疗单位寻找受伤最重的友军 |
+
+### 目标选择策略
+
+```mermaid
+flowchart TB
+    A[SetTargetSystem] --> B{检查现有目标}
+    B -->|目标死亡/超出射程| C[移除 TargetComponent]
+    B -->|目标有效| D[保持目标]
+    C --> E{单位类型}
+    
+    E -->|攻击单位| F[寻找最近敌方]
+    E -->|治疗单位| G[寻找受伤友军]
+    
+    F --> H{射程内有敌人?}
+    H -->|是| I[锁定最近敌人]
+    H -->|否| J[无目标]
+    
+    G --> K{射程内有受伤友军?}
+    K -->|是| L[锁定血量百分比最低的友军]
+    K -->|否| J
+```
+
+### 核心逻辑
+
+```cpp
+void SetTargetSystem::update(entt::registry& registry) {
+    // 处理攻击单位
+    auto attackers = registry.view<StatsComponent, TransformComponent>(entt::exclude<HealerTag>);
+    
+    for (auto entity : attackers) {
+        auto& stats = registry.get<StatsComponent>(entity);
+        auto& pos = registry.get<TransformComponent>(entity);
+        
+        // 检查现有目标有效性
+        if (registry.all_of<TargetComponent>(entity)) {
+            auto& target = registry.get<TargetComponent>(entity);
+            if (!isTargetValid(registry, entity, target.entity_, stats.range_)) {
+                registry.remove<TargetComponent>(entity);
+            }
+        }
+        
+        // 寻找新目标
+        if (!registry.all_of<TargetComponent>(entity)) {
+            auto new_target = findNearestEnemy(registry, pos.position_, stats.range_);
+            if (new_target != entt::null) {
+                registry.emplace<TargetComponent>(entity, new_target);
+            }
+        }
+    }
+    
+    // 处理治疗单位（类似逻辑）
+    // ...
+}
+```
+
+---
+
+## OrientationSystem 详细说明
+
+**文件**: `src/game/system/orientation_system.h`, `src/game/system/orientation_system.cpp`
+
+### 功能说明
+
+统一管理实体的翻转状态，确保实体面向正确的方向。
+
+### 朝向判断优先级
+
+```mermaid
+flowchart TB
+    A[OrientationSystem] --> B{有 TargetComponent?}
+    B -->|是| C[面向目标]
+    B -->|否| D{有 BlockedByComponent?}
+    
+    D -->|是| E[面向阻挡者]
+    D -->|否| F{速度非零?}
+    
+    F -->|是| G[面向移动方向]
+    F -->|否| H[保持当前朝向]
+    
+    C --> I[更新 SpriteComponent.is_flipped_]
+    E --> I
+    G --> I
+```
+
+### 核心逻辑
+
+```cpp
+void OrientationSystem::update(entt::registry& registry) {
+    auto view = registry.view<TransformComponent, SpriteComponent>();
+    
+    for (auto entity : view) {
+        auto& transform = view.get<TransformComponent>(entity);
+        auto& sprite = view.get<SpriteComponent>(entity);
+        
+        bool should_flip = false;
+        
+        // 优先级 1: 面向目标
+        if (registry.all_of<TargetComponent>(entity)) {
+            auto& target = registry.get<TargetComponent>(entity);
+            if (registry.valid(target.entity_)) {
+                auto& target_pos = registry.get<TransformComponent>(target.entity_);
+                should_flip = target_pos.position_.x < transform.position_.x;
+            }
+        }
+        // 优先级 2: 面向阻挡者
+        else if (registry.all_of<BlockedByComponent>(entity)) {
+            auto& blocked = registry.get<BlockedByComponent>(entity);
+            if (registry.valid(blocked.blocker_entity_)) {
+                auto& blocker_pos = registry.get<TransformComponent>(blocked.blocker_entity_);
+                should_flip = blocker_pos.position_.x < transform.position_.x;
+            }
+        }
+        // 优先级 3: 面向移动方向
+        else if (registry.all_of<VelocityComponent>(entity)) {
+            auto& velocity = registry.get<VelocityComponent>(entity);
+            if (velocity.velocity_.x != 0) {
+                should_flip = velocity.velocity_.x < 0;
+            }
+        }
+        
+        sprite.sprite_.is_flipped_ = should_flip;
+    }
+}
+```

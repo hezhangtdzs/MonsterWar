@@ -48,6 +48,12 @@
             "K",
             "MouseLeft"
         ],
+        "upgrade": [
+            "U"
+        ],
+        "sell": [
+            "Q"
+        ],
         "move_left": [
             "A",
             "Left"

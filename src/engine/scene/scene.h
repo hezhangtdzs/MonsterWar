@@ -28,6 +28,7 @@ protected:
 	entt::registry registry_;                      ///< 实体组件系统的注册表
 
 	bool is_initialized_ = false;                   ///< 标记场景是否已完成初始化
+   bool is_paused_ = false;                        ///< 标记场景是否处于暂停状态
 	std::unique_ptr<engine::ui::UIManager> ui_manager_; ///< UI管理器，负责管理场景中的所有UI元素
 	public:
 		/**
@@ -54,6 +55,10 @@ protected:
 		virtual void update(float delta_time);
 		/** @brief 渲染场景内容。负责触发所有游戏对象的渲染。 */
 		virtual void render();
+     /** @brief 场景进入暂停状态。 */
+		virtual void onPause();
+		/** @brief 场景从暂停状态恢复。 */
+		virtual void onResume();
 		/** @brief 处理场景特定的输入。 @return 是否处理了输入事件。 */
 		virtual bool handleInput();
 		/** @brief 清理场景资源。在退出或销毁场景前调用。 */
@@ -65,6 +70,7 @@ protected:
 		//getters and setter
 		const std::string& getSceneName() const { return scene_name_; }
 		bool isInitialized() const { return is_initialized_; }
+      bool isPaused() const { return is_paused_; }
 		engine::core::Context& getContext() const { return context_; }
 		entt::registry& getRegistry() { return registry_; }
 

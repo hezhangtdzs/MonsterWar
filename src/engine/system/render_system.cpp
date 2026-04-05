@@ -48,6 +48,7 @@ void RenderSystem::update(entt::registry& registry, render::Renderer& renderer, 
         // 获取组件（此时已保证实体在该视图中）
         const auto& transform = view.get<component::TransformComponent>(entity);
         const auto& sprite = view.get<component::SpriteComponent>(entity);
+        const auto& render_component = view.get<component::RenderComponent>(entity);
 
         // 计算最终渲染位置：实体位置 + 精灵偏移
         auto position = transform.position_ + sprite.offset_;
@@ -56,7 +57,7 @@ void RenderSystem::update(entt::registry& registry, render::Renderer& renderer, 
         auto size = sprite.size_ * transform.scale_;
 
         // 调用渲染器绘制
-        renderer.drawSprite(camera, sprite.sprite_, position, size, transform.rotation_);
+        renderer.drawSprite(camera, sprite.sprite_, position, size, transform.rotation_, render_component.color_);
     }
 }
 

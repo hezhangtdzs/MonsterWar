@@ -1,6 +1,26 @@
 # Resource 资源管理模块
 
+> **版本**: 1.0.0  
+> **最后更新**: 2026-02-15  
+> **相关文档**: [渲染模块](../render/README.md) | [音频模块](../audio/README.md)
+
 Resource 模块负责游戏所有资产（纹理、音频、字体）的生命周期管理，提供统一的资源加载、缓存和卸载接口。使用 ResourceId 系统基于字符串哈希实现高效的资源标识。
+
+---
+
+## 目录
+
+- [架构概览](#架构概览)
+- [类概览](#类概览)
+- [ResourceId](#resourceid)
+- [ResourceManager](#resourcemanager)
+- [TextureManager](#texturemanager)
+- [AudioManager](#audiomanager)
+- [FontManager](#fontmanager)
+- [资源加载流程](#资源加载流程)
+- [最佳实践](#最佳实践)
+
+---
 
 ## 架构概览
 

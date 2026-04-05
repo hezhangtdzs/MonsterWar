@@ -72,7 +72,7 @@ namespace engine::render {
 		 * @param size 精灵的绘制大小。
 		 * @param angle 旋转角度（度），默认为 0.0f。
 		 */
-		void drawSprite(const Camera& camera, const engine::component::Sprite& sprite, const glm::vec2& position, const glm::vec2& size, float angle = 0.0f);
+       void drawSprite(const Camera& camera, const engine::component::Sprite& sprite, const glm::vec2& position, const glm::vec2& size, float angle = 0.0f, const engine::utils::FColor& tint = { 1.0f, 1.0f, 1.0f, 1.0f });
 
 		/**
 		 * @brief 在屏幕空间（UI 层）中绘制一个图片。
@@ -82,7 +82,17 @@ namespace engine::render {
 		 */
 		void drawUIImage(const Image& image, 
 				  const glm::vec2& position, 
-				  const std::optional<glm::vec2>& size = std::nullopt);
+               const std::optional<glm::vec2>& size = std::nullopt,
+				  const engine::utils::FColor& tint = { 1.0f, 1.0f, 1.0f, 1.0f });
+
+		/**
+		 * @brief 绘制填充圆形。
+		 * @param camera 用于坐标转换的相机。
+		 * @param center 圆心世界坐标。
+		 * @param radius 圆半径。
+		 * @param color 圆的颜色。
+		 */
+		void drawFilledCircle(const Camera& camera, const glm::vec2& center, float radius, const engine::utils::FColor& color);
 
 		/**
 		 * @brief 在屏幕空间（UI 层）中绘制一个填充矩形。

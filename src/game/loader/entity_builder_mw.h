@@ -19,5 +19,7 @@ namespace game::loader {
         ~EntityBuilderMW() override;
         EntityBuilderMW* build() override;
         void buildPath();
+    private:
+        void buildPlacementTag();
     };
 } // namespace game::loader

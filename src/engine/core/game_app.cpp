@@ -15,6 +15,11 @@
 #include "../audio/audio_locator.h"
 #include "../audio/log_audio_player.h"
 #include "../utils/events.h"
+#include "../scene/scene.h"
+#include "../../game/defs/tags.h"
+#include <imgui.h>
+#include <backends/imgui_impl_sdl3.h>
+#include <backends/imgui_impl_sdlrenderer3.h>
 
 
 /**
@@ -81,7 +86,8 @@ bool engine::core::GameApp::init()
 		initTextRenderer()&&
 		initCamera()&&
 		initContext()&&
-		initSceneManager()) 
+        initSceneManager()&&
+		initImGui()) 
 	{
 		spdlog::info("游戏应用程序初始化成功。");
 		
@@ -138,9 +144,22 @@ void engine::core::GameApp::render()
 	// 1. 清除屏幕
 	renderer_->clearScreen();
 
+	if (imgui_initialized_) {
+		ImGui_ImplSDL3_NewFrame();
+		ImGui_ImplSDLRenderer3_NewFrame();
+		ImGui::NewFrame();
+	}
+
 	// 2. 具体渲染代码
 	if (scene_manager_) {
 		scene_manager_->render();
+	}
+
+	renderImGui();
+
+	if (imgui_initialized_) {
+		ImGui::Render();
+		ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), sdl_renderer_);
 	}
 
 	// 3. 更新屏幕显示
@@ -154,6 +173,7 @@ void engine::core::GameApp::close()
 {
 	dispatcher_->sink<engine::utils::QuitEvent>().disconnect<&GameApp::onQuitEvent>(this);
 	spdlog::trace("关闭 GameApp ...");
+ shutdownImGui();
 	if (sdl_renderer_ != nullptr) {
 		SDL_DestroyRenderer(sdl_renderer_);
 		sdl_renderer_ = nullptr;
@@ -187,6 +207,63 @@ bool engine::core::GameApp::initConfig()
 	}
 	spdlog::trace("配置初始化成功。");
 	return true;
+}
+
+bool engine::core::GameApp::initImGui()
+{
+	try {
+		IMGUI_CHECKVERSION();
+		ImGui::CreateContext();
+		ImGui::StyleColorsDark();
+		if (!ImGui_ImplSDL3_InitForSDLRenderer(window_, sdl_renderer_) || !ImGui_ImplSDLRenderer3_Init(sdl_renderer_)) {
+			spdlog::error("初始化 ImGui 后端失败");
+			return false;
+		}
+		imgui_initialized_ = true;
+	}
+	catch (const std::exception& e) {
+		spdlog::error("初始化 ImGui 失败: {}", e.what());
+		return false;
+	}
+	spdlog::trace("ImGui 初始化成功。");
+	return true;
+}
+
+void engine::core::GameApp::renderImGui()
+{
+	if (!imgui_initialized_) {
+		return;
+	}
+
+	auto* current_scene = scene_manager_ ? scene_manager_->getCurrentScene() : nullptr;
+	ImGuiIO& io = ImGui::GetIO();
+	ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x - 12.0f, io.DisplaySize.y - 12.0f), ImGuiCond_Always, ImVec2(1.0f, 1.0f));
+	ImGui::SetNextWindowBgAlpha(0.25f);
+	const ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration |
+		ImGuiWindowFlags_AlwaysAutoResize |
+		ImGuiWindowFlags_NoSavedSettings |
+		ImGuiWindowFlags_NoMove |
+		ImGuiWindowFlags_NoFocusOnAppearing |
+		ImGuiWindowFlags_NoNav;
+	ImGui::Begin("MonsterWarOverlay", nullptr, flags);
+	ImGui::Text("Scene: %s", current_scene ? current_scene->getSceneName().c_str() : "None");
+	ImGui::Text("State: %s", game_state_ && game_state_->isGameOver() ? "GameOver" : (game_state_ && game_state_->isPaused() ? "Paused" : "Playing"));
+	if (current_scene) {
+		auto& registry = current_scene->getRegistry();
+		ImGui::Text("Build: %zu / %zu", registry.view<game::defs::MeleePlaceTag>().size(), registry.view<game::defs::RangePlaceTag>().size());
+	}
+	ImGui::End();
+}
+
+void engine::core::GameApp::shutdownImGui()
+{
+	if (!imgui_initialized_) {
+		return;
+	}
+	ImGui_ImplSDLRenderer3_Shutdown();
+	ImGui_ImplSDL3_Shutdown();
+	ImGui::DestroyContext();
+	imgui_initialized_ = false;
 }
 
 /**

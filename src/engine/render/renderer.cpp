@@ -38,7 +38,7 @@ namespace engine::render {
      * @param size 精灵的绘制大小。
      * @param angle 旋转角度（单位为度）。
      */
-    void Renderer::drawSprite(const Camera & camera, const engine::component::Sprite & sprite, const glm::vec2 & position, const glm::vec2 & size, float angle)
+    void Renderer::drawSprite(const Camera & camera, const engine::component::Sprite & sprite, const glm::vec2 & position, const glm::vec2 & size, float angle, const engine::utils::FColor& tint)
     {
            auto texture = resource_manager_->getTexture(sprite.texture_id_, sprite.texture_path_);
     if (!texture) {
@@ -69,10 +69,23 @@ namespace engine::render {
         sprite.src_rect_.size.y
     };
 
+    if (!SDL_SetTextureColorMod(texture,
+                                static_cast<Uint8>(tint.r * 255.0f),
+                                static_cast<Uint8>(tint.g * 255.0f),
+                                static_cast<Uint8>(tint.b * 255.0f))) {
+        spdlog::error("设置精灵颜色调制失败（ID: {}）：{}", sprite.texture_id_, SDL_GetError());
+    }
+    if (!SDL_SetTextureAlphaMod(texture, static_cast<Uint8>(tint.a * 255.0f))) {
+        spdlog::error("设置精灵透明度调制失败（ID: {}）：{}", sprite.texture_id_, SDL_GetError());
+    }
+
     // 执行绘制(默认旋转中心为精灵的中心点)
     if (!SDL_RenderTextureRotated(renderer_, texture, &src_rect, &dest_rect, angle, NULL, sprite.is_flipped_ ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE)) {
         spdlog::error("渲染旋转纹理失败（ID: {}）：{}", sprite.texture_id_, SDL_GetError());
     }   
+
+    SDL_SetTextureColorMod(texture, 255, 255, 255);
+    SDL_SetTextureAlphaMod(texture, 255);
     }
 
 /**
@@ -86,7 +99,8 @@ namespace engine::render {
      */
     void Renderer::drawUIImage(const Image& image,
                                 const glm::vec2& position,
-                                const std::optional<glm::vec2>& size) {
+                                const std::optional<glm::vec2>& size,
+                                const engine::utils::FColor& tint) {
         auto texture = resource_manager_->getTexture(image.getTextureId(), image.getTexturePath());
         if (!texture) {
             spdlog::error("无法为 ID {} 获取纹理。", image.getTextureId());
@@ -105,9 +119,31 @@ namespace engine::render {
             dest_w,
             dest_h
         };
+        if (!SDL_SetTextureColorMod(texture,
+                                    static_cast<Uint8>(tint.r * 255.0f),
+                                    static_cast<Uint8>(tint.g * 255.0f),
+                                    static_cast<Uint8>(tint.b * 255.0f))) {
+            spdlog::error("设置 UI 纹理颜色调制失败（ID: {}）：{}", image.getTextureId(), SDL_GetError());
+        }
+        if (!SDL_SetTextureAlphaMod(texture, static_cast<Uint8>(tint.a * 255.0f))) {
+            spdlog::error("设置 UI 纹理透明度调制失败（ID: {}）：{}", image.getTextureId(), SDL_GetError());
+        }
         if (!SDL_RenderTexture(renderer_, texture, &src_rect.value(), &dest_rect)) {
             spdlog::error("渲染 UI 纹理失败（ID: {}）：{}", image.getTextureId(), SDL_GetError());
         }
+
+        SDL_SetTextureColorMod(texture, 255, 255, 255);
+        SDL_SetTextureAlphaMod(texture, 255);
+    }
+
+    void Renderer::drawFilledCircle(const Camera& camera, const glm::vec2& center, float radius, const engine::utils::FColor& color) {
+        if (radius <= 0.0f) {
+            return;
+        }
+
+        static const Image circle_image("ui_circle");
+        const glm::vec2 screen_center = camera.worldToScreen(center);
+        drawUIImage(circle_image, screen_center - glm::vec2(radius, radius), glm::vec2{ radius * 2.0f, radius * 2.0f }, color);
     }
 
     /**
@@ -239,6 +275,10 @@ namespace engine::render {
             rect.size.y
         };
 
+        if (!SDL_SetRenderDrawBlendMode(renderer_, SDL_BLENDMODE_BLEND)) {
+            spdlog::error("设置 UI 填充矩形混合模式失败：{}", SDL_GetError());
+        }
+
         // 设置绘制颜色
         SDL_SetRenderDrawColor(renderer_,
                                static_cast<Uint8>(color.r * 255),
@@ -269,6 +309,10 @@ namespace engine::render {
             rect.size.x,
             rect.size.y
         };
+
+        if (!SDL_SetRenderDrawBlendMode(renderer_, SDL_BLENDMODE_BLEND)) {
+            spdlog::error("设置 UI 边框矩形混合模式失败：{}", SDL_GetError());
+        }
 
         // 设置绘制颜色
         SDL_SetRenderDrawColor(renderer_,

@@ -68,5 +68,17 @@ namespace engine::utils {
         entt::id_type animation_id_{entt::null};    ///< @brief 播放完的动画ID
     };
 
+    struct AnimationEvent {
+        entt::entity entity_{entt::null};           ///< @brief 目标实体
+        entt::id_type event_id_{ entt::null };        ///< @brief 动画事件ID
+        entt::id_type animation_id_{entt::null};    ///< @brief 动画ID
+		
+	};
+
+    struct PlaySoundEvent {
+        entt::entity entity_{entt::null};           ///< @brief 目标实体
+        entt::id_type sound_id_{entt::null};        ///< @brief 音效ID
+	};
+
     // 这里可以定义一些与事件处理相关的工具函数或类型别名
 } // namespace engine::utils

@@ -1,6 +1,7 @@
 #include "ui_element.h"
 #include "../core/context.h"
 #include "../input/input_manager.h"
+#include <algorithm>
 #include <glm/glm.hpp>
 
 namespace engine::ui {
@@ -78,6 +79,14 @@ void UIElement::addChild(std::unique_ptr<UIElement> child) {
     }
 }
 
+void UIElement::addChild(std::unique_ptr<UIElement> child, int order_index) {
+    if (child) {
+        child->setParent(this);
+        child->setOrderIndex(order_index);
+        children_.emplace_back(std::move(child));
+    }
+}
+
 /**
  * @brief 移除指定的子元素。
  * @param child 要移除的子元素指针。
@@ -89,11 +98,41 @@ void UIElement::removeChild(UIElement* child) {
 
     for (auto it = children_.begin(); it != children_.end(); ++it) {
         if (it->get() == child) {
-            it->release(); // 手动释放指针，避免双重删除
             children_.erase(it);
             break;
         }
     }
+}
+
+UIElement* UIElement::getChildById(entt::id_type id) const {
+    for (const auto& child : children_) {
+        if (child && child->getId() == id) {
+            return child.get();
+        }
+    }
+    return nullptr;
+}
+
+bool UIElement::removeChildById(entt::id_type id) {
+    for (auto it = children_.begin(); it != children_.end(); ++it) {
+        if (*it && (*it)->getId() == id) {
+            children_.erase(it);
+            return true;
+        }
+    }
+    return false;
+}
+
+void UIElement::sortChildrenByOrderIndex() {
+    std::stable_sort(children_.begin(), children_.end(), [](const auto& lhs, const auto& rhs) {
+        if (!lhs || !rhs) {
+            return lhs != nullptr;
+        }
+        if (lhs->getOrderIndex() != rhs->getOrderIndex()) {
+            return lhs->getOrderIndex() < rhs->getOrderIndex();
+        }
+        return lhs->getId() < rhs->getId();
+    });
 }
 
 /**

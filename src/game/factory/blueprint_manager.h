@@ -40,6 +40,20 @@ public:
     [[nodiscard]] bool loadPlayerClassBlueprints(std::string_view player_json_path);
 
     /**
+     * @brief 从 JSON 文件加载投射物蓝图
+     * @param projectile_json_path 投射物数据 JSON 文件路径
+     * @return 加载成功返回 true
+     */
+    [[nodiscard]] bool loadProjectileBlueprints(std::string_view projectile_json_path);
+
+    /**
+     * @brief 从 JSON 文件加载特效蓝图
+     * @param effect_json_path 特效数据 JSON 文件路径
+     * @return 加载成功返回 true
+     */
+    [[nodiscard]] bool loadEffectBlueprints(std::string_view effect_json_path);
+
+    /**
      * @brief 获取指定类型的敌人蓝图
      * @param id 敌人类型ID（entt::hashed_string 值）
      * @return 敌人蓝图的常量引用
@@ -69,10 +83,18 @@ public:
      */
     bool hasPlayerClassBlueprint(entt::id_type id) const;
 
+    bool hasProjectileBlueprint(entt::id_type id) const;
+    bool hasEffectBlueprint(entt::id_type id) const;
+
+    const data::ProjectileBlueprint& getProjectileBlueprint(entt::id_type id) const;
+    const data::EffectBlueprint& getEffectBlueprint(entt::id_type id) const;
+
 private:
     engine::resource::ResourceManager& resource_manager_;
     std::unordered_map<entt::id_type, data::EnemyClassBlueprint> enemy_class_blueprints_;
     std::unordered_map<entt::id_type, data::PlayerClassBlueprint> player_class_blueprints_;
+    std::unordered_map<entt::id_type, data::ProjectileBlueprint> projectile_blueprints_;
+    std::unordered_map<entt::id_type, data::EffectBlueprint> effect_blueprints_;
 
     // 解析辅助函数
     [[nodiscard]] data::StatsBlueprint parseStats(const nlohmann::json& json) const;
@@ -82,6 +104,8 @@ private:
     [[nodiscard]] data::EnemyBlueprint parseEnemy(const nlohmann::json& json) const;
     [[nodiscard]] data::PlayerBlueprint parsePlayer(const nlohmann::json& json) const;
     [[nodiscard]] data::DisplayInfoBlueprint parseDisplayInfo(const nlohmann::json& json) const;
+    [[nodiscard]] data::ProjectileBlueprint parseProjectile(const nlohmann::json& json, entt::id_type projectile_id);
+    [[nodiscard]] data::EffectBlueprint parseEffect(const nlohmann::json& json, entt::id_type effect_id);
 };
 
 } // namespace game::factory

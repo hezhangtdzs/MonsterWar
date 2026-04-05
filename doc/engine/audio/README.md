@@ -1,6 +1,26 @@
 # Audio 音频模块
 
+> **版本**: 1.0.0  
+> **最后更新**: 2026-02-15  
+> **相关文档**: [资源模块](../resource/README.md) | [核心模块](../core/README.md)
+
 Audio 模块实现了服务定位器模式，提供全局音频播放功能，支持音效、音乐和 3D 空间化音频。支持使用 ResourceId 进行高效的音频资源标识。
+
+---
+
+## 目录
+
+- [架构概览](#架构概览)
+- [类概览](#类概览)
+- [AudioLocator](#audiolocator)
+- [IAudioPlayer](#iaudioplayer)
+- [AudioPlayer](#audioplayer)
+- [NullAudioPlayer](#nullaudioplayer)
+- [LogAudioPlayer](#logaudioplayer)
+- [与 AudioComponent 的配合](#与-audiocomponent-的配合)
+- [最佳实践](#最佳实践)
+
+---
 
 ## 架构概览
 

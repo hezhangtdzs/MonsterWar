@@ -84,6 +84,7 @@ namespace engine::component {
      */
     struct Animation {
         std::vector<AnimationFrame> frames_;    ///< 动画包含的所有帧序列，按播放顺序排列
+		std::unordered_map<int, entt::id_type> events_; ///< 可选的帧事件映射，键为帧索引，值为事件ID（entt::hashed_string）
         float total_duration_ms_{};             ///< 整个动画序列的总时长（毫秒），自动计算
         bool loop_{true};                       ///< 播放完毕后是否循环，false表示播放一次后停止
 
@@ -94,8 +95,8 @@ namespace engine::component {
          *
          * @note 构造函数会自动计算 total_duration_ms_
          */
-        Animation(std::vector<AnimationFrame> frames, bool loop = true)
-            : frames_(std::move(frames)), loop_(loop) {
+        Animation(std::vector<AnimationFrame> frames,std::unordered_map<int, entt::id_type> events = {}, bool loop = true)
+            : frames_(std::move(frames)), events_(std::move(events)), loop_(loop) {
             // 计算动画总时长 (总时长 = 所有帧时长之和)
             total_duration_ms_ = 0.0f;
             for (const auto& frame : frames_) {

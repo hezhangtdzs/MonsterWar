@@ -31,6 +31,9 @@ namespace engine::audio
 {
     class IAudioPlayer;
 }
+namespace game::ui {
+    class HeroInspectorUI;
+}
 namespace engine::core {
     class Time;
     class Config;
@@ -81,6 +84,8 @@ namespace engine::core {
         std::unique_ptr<GameState> game_state_;
         /// ImGui 是否已初始化
         bool imgui_initialized_{false};
+        /// 英雄信息面板
+        std::unique_ptr<game::ui::HeroInspectorUI> hero_inspector_ui_;
         /// 初始化回调函数
         std::function<void(engine::core::Context&)> on_init_;
 

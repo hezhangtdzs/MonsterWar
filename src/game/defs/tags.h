@@ -117,6 +117,33 @@ struct HealerTag {};        ///< 治疗单位标签
 struct AttackReadyTag {};
 
 /**
+ * @struct SkillReadyTag
+ * @brief 技能就绪标签。
+ *
+ * @details
+ * 当技能冷却结束后由 TimerSystem 添加，表示该技能可以被手动激活。
+ */
+struct SkillReadyTag {};
+
+/**
+ * @struct SkillActiveTag
+ * @brief 技能激活标签。
+ *
+ * @details
+ * 当技能被释放后由技能系统添加，表示该技能正在持续生效。
+ */
+struct SkillActiveTag {};
+
+/**
+ * @struct PassiveSkillTag
+ * @brief 被动技能标签。
+ *
+ * @details
+ * 被动技能不参与冷却/持续计时，由技能系统在单位创建时添加。
+ */
+struct PassiveSkillTag {};
+
+/**
  * @struct InjuredTag
  * @brief 受伤标签。
  * 

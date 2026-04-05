@@ -45,8 +45,10 @@
             "MouseRight"
         ],
         "attack": [
-            "K",
             "MouseLeft"
+        ],
+        "release_skill": [
+            "K"
         ],
         "upgrade": [
             "U"

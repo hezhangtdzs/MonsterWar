@@ -101,10 +101,13 @@ set(CORE_SOURCES
     src/game/system/animation_events_system.cpp
     src/game/system/orientation_system.cpp
     src/game/system/projectile_visual_system.cpp
+    src/game/system/selection_system.cpp
     src/game/system/game_rule_system.cpp
+    src/game/system/hero_skill_system.cpp
     src/game/system/place_unit_system.cpp
     src/game/system/render_range_system.cpp
     src/game/ui/units_portrait_ui.cpp
+    src/game/ui/hero_inspector_ui.cpp
 
     src/game/factory/blueprint_manager.cpp
     src/game/factory/entity_factory.cpp

@@ -14,7 +14,9 @@ class AnimationEventsSystem;
 class CombatResolveSystem;
 class ProjectileVisualSystem;
 class PlaceUnitSystem;
+class SelectionSystem;
 class RenderRangeSystem;
 class GameRuleSystem;
+class HeroSkillSystem;
 
 }   // namespace game::system

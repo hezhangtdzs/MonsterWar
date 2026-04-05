@@ -55,6 +55,8 @@ private:
     std::unique_ptr<game::system::OrientationSystem> orientation_system_;
 	std::unique_ptr<game::system::AnimationEventsSystem> animation_events_system_;
 	std::unique_ptr<game::system::CombatResolveSystem> combat_resolve_system_;
+    std::unique_ptr<game::system::SelectionSystem> selection_system_;
+    std::unique_ptr<game::system::HeroSkillSystem> hero_skill_system_;
     std::unique_ptr<game::system::PlaceUnitSystem> place_unit_system_;
     std::unique_ptr<game::system::RenderRangeSystem> render_range_system_;
     std::unique_ptr<game::system::GameRuleSystem> game_rule_system_;
@@ -81,6 +83,9 @@ private:
     std::string current_level_name_ = "Level 1";
     std::string current_map_path_ = "assets/maps/level1.tmj";
     float level_prep_time_ = 5.0f;
+
+    entt::entity hovered_unit_{ entt::null };
+    entt::entity selected_unit_{ entt::null };
 
     std::unique_ptr<game::data::SessionData> session_data_;
     std::unique_ptr<game::data::UIConfig> ui_config_;
@@ -131,8 +136,10 @@ private:
     [[nodiscard]] bool initInputConnections();
     [[nodiscard]] bool initEntityFactory();
     [[nodiscard]] bool initRegistryContext();
+    [[nodiscard]] bool initSelectionSystem();
     [[nodiscard]] bool initPlacementSystem();
     [[nodiscard]] bool initGameRuleSystem();
+    [[nodiscard]] bool initHeroSkillSystem();
     [[nodiscard]] bool initUI();
     void startNextWave();
     void updateWaveFlow(float delta_time);
@@ -159,6 +166,7 @@ private:
     bool onCreateTestPlayerHealer();
     bool onUpgradeClosestPlayer();
     bool onSellClosestPlayer();
+    bool onReleaseSelectedHeroSkill();
     bool onClearAllPlayers();
 
 };

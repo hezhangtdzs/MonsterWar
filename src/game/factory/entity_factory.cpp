@@ -23,10 +23,12 @@
 #include "../component/class_name_component.h"
 #include "../component/enemy_component.h"
 #include "../component/player_component.h"
+#include "../component/hero_skill_component.h"
 #include "../component/projectile_visual_component.h"
 #include "../component/unit_prep_component.h"
 #include "../component/blocker_component.h"
 #include "../defs/tags.h"
+#include "../factory/blueprint_manager.h"
 #include "../../engine/component/transform_component.h"
 #include "../../engine/component/sprite_component.h"
 #include "../../engine/component/animation_component.h"
@@ -170,6 +172,25 @@ entt::entity EntityFactory::createPlayerUnit(entt::id_type class_id,
     addAudioComponent(entity, blueprint.sounds_);
     addStatsComponent(entity, blueprint.stats_, level, rarity);
     addPlayerComponent(entity, blueprint.player_, rarity);
+    if (blueprint.player_.skill_id_ != entt::null && blueprint_manager_.hasSkillBlueprint(blueprint.player_.skill_id_)) {
+        const auto& skill = blueprint_manager_.getSkillBlueprint(blueprint.player_.skill_id_);
+        registry_.emplace<game::component::HeroSkillComponent>(entity,
+            skill.skill_id_,
+            skill.cooldown_,
+            0.0f,
+            skill.duration_,
+            0.0f,
+            skill.passive_,
+            false,
+            skill.atk_multiplier_,
+            skill.def_multiplier_,
+            skill.range_multiplier_,
+            skill.atk_interval_multiplier_);
+        if (skill.passive_) {
+            registry_.emplace<game::defs::PassiveSkillTag>(entity);
+            registry_.emplace<game::defs::SkillReadyTag>(entity);
+        }
+    }
 
     // 添加类名组件
     registry_.emplace<game::component::ClassNameComponent>(entity, class_id, blueprint.display_info_.name_);
@@ -468,8 +489,8 @@ entt::entity EntityFactory::createEffectVisual(entt::id_type effect_id,
 
     std::vector<engine::component::AnimationFrame> frames;
     for (int frame_index : blueprint.animation_.frames_) {
-        const float x = blueprint.sprite_.src_rect_.size.x * static_cast<float>(frame_index);
-        const float y = blueprint.animation_.row_ * blueprint.sprite_.src_rect_.size.y;
+        const float x = blueprint.sprite_.src_rect_.position.x + blueprint.sprite_.src_rect_.size.x * static_cast<float>(frame_index);
+        const float y = blueprint.sprite_.src_rect_.position.y + blueprint.animation_.row_ * blueprint.sprite_.src_rect_.size.y;
         engine::utils::Rect frame_rect{ x, y, blueprint.sprite_.src_rect_.size.x, blueprint.sprite_.src_rect_.size.y };
         frames.emplace_back(frame_rect, blueprint.animation_.ms_per_frame_);
     }

@@ -20,7 +20,7 @@ public:
      * @param registry EnTT 注册表。
      * @param delta_time 自上一帧以来的时间间隔（秒）。
      */
-    void update(entt::registry& registry, float delta_time);
+    void update(entt::registry& registry, entt::dispatcher& dispatcher, float delta_time);
 };
 
 } // namespace game::system

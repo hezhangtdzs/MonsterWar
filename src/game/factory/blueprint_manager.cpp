@@ -211,6 +211,33 @@ bool BlueprintManager::loadEffectBlueprints(std::string_view effect_json_path) {
     return true;
 }
 
+bool BlueprintManager::loadSkillBlueprints(std::string_view skill_json_path) {
+    std::string path_str(skill_json_path);
+    std::ifstream input_file(path_str);
+    if (!input_file.is_open()) {
+        ENGINE_LOG_ERROR("无法打开技能蓝图文件: {}", skill_json_path);
+        return false;
+    }
+
+    nlohmann::json json_data;
+    try {
+        input_file >> json_data;
+    } catch (const nlohmann::json::exception& e) {
+        ENGINE_LOG_ERROR("解析技能蓝图 JSON 失败: {}", e.what());
+        return false;
+    }
+
+    for (auto& [skill_name, data_json] : json_data.items()) {
+        entt::id_type skill_id = entt::hashed_string(skill_name.c_str());
+        auto blueprint = parseSkill(data_json, skill_id);
+        skill_blueprints_.emplace(skill_id, std::move(blueprint));
+        ENGINE_LOG_INFO("已加载技能蓝图: {} (ID: {})", skill_name, skill_id);
+    }
+
+    ENGINE_LOG_INFO("成功加载 {} 个技能蓝图", skill_blueprints_.size());
+    return true;
+}
+
 /**
  * @brief 获取指定类型的敌人蓝图
  * @param id 敌人类型ID（entt::hashed_string 值）
@@ -257,12 +284,20 @@ bool BlueprintManager::hasEffectBlueprint(entt::id_type id) const {
     return effect_blueprints_.find(id) != effect_blueprints_.end();
 }
 
+bool BlueprintManager::hasSkillBlueprint(entt::id_type id) const {
+    return skill_blueprints_.find(id) != skill_blueprints_.end();
+}
+
 const data::ProjectileBlueprint& BlueprintManager::getProjectileBlueprint(entt::id_type id) const {
     return projectile_blueprints_.at(id);
 }
 
 const data::EffectBlueprint& BlueprintManager::getEffectBlueprint(entt::id_type id) const {
     return effect_blueprints_.at(id);
+}
+
+const data::SkillBlueprint& BlueprintManager::getSkillBlueprint(entt::id_type id) const {
+    return skill_blueprints_.at(id);
 }
 
 /**
@@ -469,6 +504,22 @@ data::EffectBlueprint BlueprintManager::parseEffect(const nlohmann::json& json, 
 
     resource_manager_.loadTexture(effect.sprite_.id_, effect.sprite_.path_);
     return effect;
+}
+
+data::SkillBlueprint BlueprintManager::parseSkill(const nlohmann::json& json, entt::id_type skill_id) const {
+    data::SkillBlueprint skill;
+    skill.skill_id_ = skill_id;
+    skill.name_ = json.value("name", "Unknown Skill");
+    skill.description_ = json.value("description", "");
+    skill.passive_ = json.value("passive", false);
+    skill.atk_multiplier_ = json.value("atk", 1.0f);
+    skill.def_multiplier_ = json.value("def", 1.0f);
+    skill.range_multiplier_ = json.value("range", 1.0f);
+    skill.atk_interval_multiplier_ = json.value("atk_interval", 1.0f);
+    skill.cooldown_ = json.value("cooldown", 0.0f);
+    skill.duration_ = json.value("duration", 0.0f);
+    skill.cost_regen_ = json.value("cost_regen", 0.0f);
+    return skill;
 }
 
 } // namespace game::factory

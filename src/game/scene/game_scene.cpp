@@ -16,12 +16,16 @@
 #include "../system/orientation_system.h"
 #include "../system/animation_events_system.h"
 #include "../system/combat_resolve_system.h"
+#include "../system/selection_system.h"
 #include "../system/game_rule_system.h"
+#include "../system/hero_skill_system.h"
 #include "../system/place_unit_system.h"
 #include "../system/render_range_system.h"
+#include "../data/selection_state.h"
 #include "../defs/tags.h"
 #include "../defs/constants.h"
 #include "../data/game_stats.h"
+#include "../component/hero_skill_component.h"
 #include "../component/stats_component.h"
 #include "../../engine/component/transform_component.h"
 #include "../../engine/component/velocity_component.h"
@@ -123,8 +127,16 @@ void GameScene::init() {
         fail_and_clean("初始化注册表上下文失败");
         return;
     }
+    if (!initSelectionSystem()) {
+        fail_and_clean("初始化选择系统失败");
+        return;
+    }
     if (!initGameRuleSystem()) {
         fail_and_clean("初始化关卡规则系统失败");
+        return;
+    }
+    if (!initHeroSkillSystem()) {
+        fail_and_clean("初始化英雄技能系统失败");
         return;
     }
     if (!initPlacementSystem()) {
@@ -161,9 +173,18 @@ void GameScene::update(float delta_time) {
 
     auto& dispatcher = context_.getDispatcher();
 
+    if (selection_system_) {
+        selection_system_->update(registry_, context_);
+    }
+
+    dispatcher.update();
+
     if (!context_.getGameState().isPaused()) {
         if (game_rule_system_) {
             game_rule_system_->update(delta_time);
+        }
+        if (hero_skill_system_) {
+            hero_skill_system_->update(delta_time);
         }
         if (game_stats_.home_hp_ <= 0) {
             context_.getGameState().setState(engine::core::GameStateType::GameOver);
@@ -182,7 +203,7 @@ void GameScene::update(float delta_time) {
 
         // 战斗循环
         set_target_system_->update(registry_);
-        timer_system_->update(registry_, delta_time);
+        timer_system_->update(registry_, dispatcher, delta_time);
         attack_starter_system_->update(registry_, dispatcher);
         projectile_visual_system_->update(registry_, delta_time);
 
@@ -218,13 +239,16 @@ void GameScene::clean() {
     input_manager.onAction("mouse_right"_hs).disconnect<&GameScene::onCreateTestPlayerMelee>(this);
     input_manager.onAction("mouse_left"_hs).disconnect<&GameScene::onCreateTestPlayerRanged>(this);
     input_manager.onAction("move_left"_hs).disconnect<&GameScene::onCreateTestPlayerHealer>(this);
+    input_manager.onAction("release_skill"_hs).disconnect<&GameScene::onReleaseSelectedHeroSkill>(this);
     input_manager.onAction("pause"_hs).disconnect<&GameScene::togglePause>(this);
     health_bar_widgets_.clear();
     hidden_unit_portrait_ids_.clear();
     health_bar_layer_ = nullptr;
     unit_panel_ = nullptr;
     pause_overlay_ = nullptr;
+    selection_system_.reset();
     game_rule_system_.reset();
+    hero_skill_system_.reset();
     place_unit_system_.reset();
     render_range_system_.reset();
     Scene::clean();
@@ -347,25 +371,24 @@ bool GameScene::initInputConnections() {
     auto& input_manager = context_.getInputManager();
     input_manager.onAction("upgrade"_hs).connect<&GameScene::onUpgradeClosestPlayer>(this);
     input_manager.onAction("sell"_hs).connect<&GameScene::onSellClosestPlayer>(this);
+    input_manager.onAction("release_skill"_hs).connect<&GameScene::onReleaseSelectedHeroSkill>(this);
     input_manager.onAction("pause"_hs).connect<&GameScene::togglePause>(this);
     return true;
 }
 
 bool GameScene::initEntityFactory() {
-    // 如果蓝图管理器为空，则创建一个（将来可能由构造函数传入）
-    if (!blueprint_manager_) {  
+    if (!blueprint_manager_) {
         blueprint_manager_ = std::make_shared<game::factory::BlueprintManager>(context_.getResourceManager());
         if (!blueprint_manager_->loadEnemyClassBlueprints("assets/data/enemy_data.json") ||
-            !blueprint_manager_->loadPlayerClassBlueprints("assets/data/player_data.json")) {
-            ENGINE_LOG_ERROR("加载蓝图失败: enemy_data.json or player_data.json");
-            return false;
-        }
-        if (!blueprint_manager_->loadProjectileBlueprints("assets/data/projectile_data.json") ||
+            !blueprint_manager_->loadPlayerClassBlueprints("assets/data/player_data.json") ||
+            !blueprint_manager_->loadSkillBlueprints("assets/data/skill_data.json") ||
+            !blueprint_manager_->loadProjectileBlueprints("assets/data/projectile_data.json") ||
             !blueprint_manager_->loadEffectBlueprints("assets/data/effect_data.json")) {
-            ENGINE_LOG_ERROR("加载表现蓝图失败: projectile_data.json or effect_data.json");
+            ENGINE_LOG_ERROR("蓝图资源加载失败");
             return false;
         }
     }
+
     entity_factory_ = std::make_unique<game::factory::EntityFactory>(registry_, *blueprint_manager_);
     ENGINE_LOG_INFO("entity_factory_ 加载完成");
     return true;
@@ -377,8 +400,29 @@ bool GameScene::initRegistryContext() {
         registry_.ctx().emplace<std::shared_ptr<game::data::SessionData>>(std::shared_ptr<game::data::SessionData>(session_data_.get(), [](game::data::SessionData*) {}));
         registry_.ctx().emplace<std::shared_ptr<game::data::UIConfig>>(std::shared_ptr<game::data::UIConfig>(ui_config_.get(), [](game::data::UIConfig*) {}));
         registry_.ctx().emplace<game::data::GameStats&>(game_stats_);
+        registry_.ctx().emplace<game::data::SelectionState>();
     } catch (const std::exception& e) {
         ENGINE_LOG_ERROR("初始化注册表上下文失败: {}", e.what());
+        return false;
+    }
+    return true;
+}
+
+bool GameScene::initSelectionSystem() {
+    try {
+        selection_system_ = std::make_unique<game::system::SelectionSystem>();
+    } catch (const std::exception& e) {
+        ENGINE_LOG_ERROR("初始化选择系统失败: {}", e.what());
+        return false;
+    }
+    return true;
+}
+
+bool GameScene::initHeroSkillSystem() {
+    try {
+        hero_skill_system_ = std::make_unique<game::system::HeroSkillSystem>(registry_, context_.getDispatcher());
+    } catch (const std::exception& e) {
+        ENGINE_LOG_ERROR("初始化英雄技能系统失败: {}", e.what());
         return false;
     }
     return true;
@@ -823,20 +867,7 @@ bool GameScene::onUpgradeClosestPlayer() {
         return false;
     }
 
-    const auto& player = registry_.get<game::component::PlayerComponent>(target);
-    const int upgrade_cost = std::max(20, player.cost_);
-    if (!trySpendGold(upgrade_cost)) {
-        return false;
-    }
-
-    auto& stats = registry_.get<game::component::StatsComponent>(target);
-    stats.level_ += 1;
-    stats.max_hp_ *= 1.20f;
-    stats.hp_ = stats.max_hp_;
-    stats.atk_ *= 1.12f;
-    stats.range_ *= 1.05f;
-
-    ENGINE_LOG_INFO("升级单位成功，花费金币: {}, 新等级: {}", upgrade_cost, stats.level_);
+    context_.getDispatcher().enqueue(game::defs::UpgradeHeroEvent{ target });
     return true;
 }
 
@@ -870,6 +901,33 @@ bool GameScene::onSellClosestPlayer() {
     context_.getDispatcher().enqueue(game::defs::RemovePlayerUnitEvent{ target });
 
     ENGINE_LOG_INFO("出售单位成功，返还金币: {}, 当前金币: {}", refund, static_cast<int>(game_stats_.cost_));
+    return true;
+}
+
+bool GameScene::onReleaseSelectedHeroSkill() {
+    if (!context_.getGameState().isPlaying()) {
+        return false;
+    }
+
+    if (!registry_.ctx().contains<game::data::SelectionState>()) {
+        ENGINE_LOG_WARN("技能释放热键触发失败: 选择状态不存在");
+        return false;
+    }
+
+    const auto& selection = registry_.ctx().get<game::data::SelectionState>();
+    const auto selected_unit = selection.selected_unit_;
+    if (selected_unit == entt::null || !registry_.valid(selected_unit)) {
+        ENGINE_LOG_WARN("技能释放热键触发失败: 当前没有有效选中单位");
+        return false;
+    }
+
+    if (!registry_.all_of<game::component::HeroSkillComponent>(selected_unit)) {
+        ENGINE_LOG_WARN("技能释放热键触发失败: 选中单位没有英雄技能组件 entity={}", entt::to_integral(selected_unit));
+        return false;
+    }
+
+    context_.getDispatcher().trigger(game::defs::ReleaseHeroSkillEvent{ selected_unit });
+    ENGINE_LOG_INFO("技能释放热键已触发 entity={}", entt::to_integral(selected_unit));
     return true;
 }
 

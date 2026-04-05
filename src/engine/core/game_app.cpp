@@ -16,6 +16,12 @@
 #include "../audio/log_audio_player.h"
 #include "../utils/events.h"
 #include "../scene/scene.h"
+#include "../../game/data/game_stats.h"
+#include "../../game/ui/hero_inspector_ui.h"
+#include "../../game/component/class_name_component.h"
+#include "../../game/component/player_component.h"
+#include "../../game/component/stats_component.h"
+#include "../../game/component/target_component.h"
 #include "../../game/defs/tags.h"
 #include <imgui.h>
 #include <backends/imgui_impl_sdl3.h>
@@ -96,6 +102,7 @@ bool engine::core::GameApp::init()
 		if (on_init_) {
 			on_init_(*context_);
 		}
+     hero_inspector_ui_ = std::make_unique<game::ui::HeroInspectorUI>();
 		dispatcher_->sink<utils::QuitEvent>().connect<&GameApp::onQuitEvent>(this);
 
 		// // 创建并推送第一个游戏场景，传入会话数据
@@ -157,6 +164,9 @@ void engine::core::GameApp::render()
 
 	renderImGui();
 
+	// UI 在渲染阶段 enqueue 的事件需要在本帧尽快派发，避免按钮操作延迟到下一帧才生效。
+	dispatcher_->update();
+
 	if (imgui_initialized_) {
 		ImGui::Render();
 		ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), sdl_renderer_);
@@ -215,6 +225,14 @@ bool engine::core::GameApp::initImGui()
 		IMGUI_CHECKVERSION();
 		ImGui::CreateContext();
 		ImGui::StyleColorsDark();
+        ImGuiIO& io = ImGui::GetIO();
+		ImFont* chinese_font = io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/msyh.ttc", 18.0f, nullptr, io.Fonts->GetGlyphRangesChineseFull());
+		if (!chinese_font) {
+			spdlog::warn("ImGui 中文字体加载失败，路径: C:/Windows/Fonts/msyh.ttc");
+			io.Fonts->AddFontDefault();
+		} else {
+			io.FontDefault = chinese_font;
+		}
 		if (!ImGui_ImplSDL3_InitForSDLRenderer(window_, sdl_renderer_) || !ImGui_ImplSDLRenderer3_Init(sdl_renderer_)) {
 			spdlog::error("初始化 ImGui 后端失败");
 			return false;
@@ -236,23 +254,29 @@ void engine::core::GameApp::renderImGui()
 	}
 
 	auto* current_scene = scene_manager_ ? scene_manager_->getCurrentScene() : nullptr;
-	ImGuiIO& io = ImGui::GetIO();
-	ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x - 12.0f, io.DisplaySize.y - 12.0f), ImGuiCond_Always, ImVec2(1.0f, 1.0f));
-	ImGui::SetNextWindowBgAlpha(0.25f);
-	const ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration |
-		ImGuiWindowFlags_AlwaysAutoResize |
-		ImGuiWindowFlags_NoSavedSettings |
-		ImGuiWindowFlags_NoMove |
-		ImGuiWindowFlags_NoFocusOnAppearing |
-		ImGuiWindowFlags_NoNav;
-	ImGui::Begin("MonsterWarOverlay", nullptr, flags);
-	ImGui::Text("Scene: %s", current_scene ? current_scene->getSceneName().c_str() : "None");
-	ImGui::Text("State: %s", game_state_ && game_state_->isGameOver() ? "GameOver" : (game_state_ && game_state_->isPaused() ? "Paused" : "Playing"));
-	if (current_scene) {
+   if (current_scene) {
 		auto& registry = current_scene->getRegistry();
-		ImGui::Text("Build: %zu / %zu", registry.view<game::defs::MeleePlaceTag>().size(), registry.view<game::defs::RangePlaceTag>().size());
+		if (registry.ctx().contains<game::data::GameStats&>()) {
+			auto& game_stats = registry.ctx().get<game::data::GameStats&>();
+			ImGui::SetNextWindowPos(ImVec2(12.0f, 12.0f), ImGuiCond_Always, ImVec2(0.0f, 0.0f));
+			ImGui::SetNextWindowBgAlpha(0.25f);
+			const ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration |
+				ImGuiWindowFlags_AlwaysAutoResize |
+				ImGuiWindowFlags_NoSavedSettings |
+				ImGuiWindowFlags_NoMove |
+				ImGuiWindowFlags_NoFocusOnAppearing |
+				ImGuiWindowFlags_NoNav;
+			ImGui::Begin("战况", nullptr, flags);
+			ImGui::Text("金币：%.1f", game_stats.cost_);
+			ImGui::Text("基地生命：%d", game_stats.home_hp_);
+			ImGui::Text("敌人击杀：%d", game_stats.enemy_killed_count_);
+			ImGui::End();
+		}
 	}
-	ImGui::End();
+
+	if (current_scene && hero_inspector_ui_) {
+		hero_inspector_ui_->render(*current_scene);
+	}
 }
 
 void engine::core::GameApp::shutdownImGui()

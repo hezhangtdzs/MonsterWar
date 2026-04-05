@@ -54,6 +54,13 @@ public:
     [[nodiscard]] bool loadEffectBlueprints(std::string_view effect_json_path);
 
     /**
+     * @brief 从 JSON 文件加载技能蓝图
+     * @param skill_json_path 技能数据 JSON 文件路径
+     * @return 加载成功返回 true
+     */
+    [[nodiscard]] bool loadSkillBlueprints(std::string_view skill_json_path);
+
+    /**
      * @brief 获取指定类型的敌人蓝图
      * @param id 敌人类型ID（entt::hashed_string 值）
      * @return 敌人蓝图的常量引用
@@ -85,9 +92,11 @@ public:
 
     bool hasProjectileBlueprint(entt::id_type id) const;
     bool hasEffectBlueprint(entt::id_type id) const;
+    bool hasSkillBlueprint(entt::id_type id) const;
 
     const data::ProjectileBlueprint& getProjectileBlueprint(entt::id_type id) const;
     const data::EffectBlueprint& getEffectBlueprint(entt::id_type id) const;
+    const data::SkillBlueprint& getSkillBlueprint(entt::id_type id) const;
 
 private:
     engine::resource::ResourceManager& resource_manager_;
@@ -95,6 +104,7 @@ private:
     std::unordered_map<entt::id_type, data::PlayerClassBlueprint> player_class_blueprints_;
     std::unordered_map<entt::id_type, data::ProjectileBlueprint> projectile_blueprints_;
     std::unordered_map<entt::id_type, data::EffectBlueprint> effect_blueprints_;
+    std::unordered_map<entt::id_type, data::SkillBlueprint> skill_blueprints_;
 
     // 解析辅助函数
     [[nodiscard]] data::StatsBlueprint parseStats(const nlohmann::json& json) const;
@@ -106,6 +116,7 @@ private:
     [[nodiscard]] data::DisplayInfoBlueprint parseDisplayInfo(const nlohmann::json& json) const;
     [[nodiscard]] data::ProjectileBlueprint parseProjectile(const nlohmann::json& json, entt::id_type projectile_id);
     [[nodiscard]] data::EffectBlueprint parseEffect(const nlohmann::json& json, entt::id_type effect_id);
+    [[nodiscard]] data::SkillBlueprint parseSkill(const nlohmann::json& json, entt::id_type skill_id) const;
 };
 
 } // namespace game::factory

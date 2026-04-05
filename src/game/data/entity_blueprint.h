@@ -138,4 +138,22 @@ struct EffectBlueprint {
     AnimationBlueprint animation_;
 };
 
+/**
+ * @struct SkillBlueprint
+ * @brief 技能蓝图，存储英雄技能的配置数据。
+ */
+struct SkillBlueprint {
+    entt::id_type skill_id_ = entt::null;
+    std::string name_;
+    std::string description_;
+    bool passive_ = false;
+    float atk_multiplier_ = 1.0f;
+    float def_multiplier_ = 1.0f;
+    float range_multiplier_ = 1.0f;
+    float atk_interval_multiplier_ = 1.0f;
+    float cooldown_ = 0.0f;
+    float duration_ = 0.0f;
+    float cost_regen_ = 0.0f;
+};
+
 } // namespace game::data

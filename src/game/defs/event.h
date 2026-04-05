@@ -80,4 +80,24 @@ struct RemovePlayerUnitEvent {
 	entt::entity entity_{ entt::null };
 };
 
+struct UpgradeHeroEvent {
+	entt::entity entity_{ entt::null };
+};
+
+struct ReleaseHeroSkillEvent {
+	entt::entity entity_{ entt::null };
+};
+
+struct SkillReadyEvent {
+	entt::entity entity_{ entt::null };
+};
+
+struct SkillActiveEvent {
+	entt::entity entity_{ entt::null };
+};
+
+struct SkillDurationEndEvent {
+	entt::entity entity_{ entt::null };
+};
+
 }   // namespace game::defs

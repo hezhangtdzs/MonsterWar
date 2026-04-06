@@ -14,6 +14,7 @@
 #include "game/defs/tags.h"
 #include "game/defs/event.h"
 #include <spdlog/spdlog.h>
+#include "../../engine/utils/logging.h"
 
 /**
  * @brief 更新系统，清理标记为死亡的实体
@@ -51,6 +52,6 @@ void game::system::RemoveDeadSystem::update(entt::registry& registry) {
         registry.destroy(entity);
         
         // 记录删除操作
-        spdlog::info("Entity {} destroyed", entity_id);
+     ENGINE_LOG_DEBUG("Entity {} destroyed", entity_id);
     }
 }

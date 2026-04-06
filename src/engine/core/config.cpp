@@ -84,6 +84,7 @@ void engine::core::Config::fromJson(const nlohmann::json& j)
     if (j.contains("graphics") && j["graphics"].is_object()) {
         const auto& graphics_config = j["graphics"];
         vsync_enabled_ = graphics_config.value("vsync", vsync_enabled_);
+        renderer_backend_ = graphics_config.value("renderer_backend", renderer_backend_);
     }
 
     if (j.contains("performance") && j["performance"].is_object()) {
@@ -146,7 +147,8 @@ nlohmann::ordered_json engine::core::Config::toJson() const
             {"resizable", window_resizable_}
         }},
         {"graphics", {
-            {"vsync", vsync_enabled_}
+            {"vsync", vsync_enabled_},
+            {"renderer_backend", renderer_backend_}
         }},
         {"performance", {
             {"target_fps", target_fps_}

@@ -6,6 +6,8 @@
 
 #include <memory>
 #include <functional>
+#include <future>
+#include <string>
 #include <entt/signal/dispatcher.hpp>
 // Forward declarations in global namespace
 struct SDL_Renderer;
@@ -82,6 +84,10 @@ namespace engine::core {
         std::unique_ptr<engine::audio::IAudioPlayer> audio_player_;
         /// 游戏状态
         std::unique_ptr<GameState> game_state_;
+        /// 资源映射异步加载任务
+        std::future<bool> resource_mapping_future_;
+        /// 渲染后端覆盖值，空字符串表示使用配置文件
+        std::string renderer_backend_override_;
         /// ImGui 是否已初始化
         bool imgui_initialized_{false};
         /// 英雄信息面板
@@ -116,6 +122,7 @@ namespace engine::core {
          * @param callback 初始化回调函数，接收 Context 引用。
          */
         void setOnInitCallback(std::function<void(engine::core::Context&)> callback);
+        void setRendererBackend(std::string backend);
         
     private:
         /**
@@ -205,6 +212,7 @@ namespace engine::core {
          */
         [[nodiscard]] bool initSceneManager();
         [[nodiscard]] bool initImGui();
+        [[nodiscard]] bool waitForResourceMapping(bool log_as_error);
         void renderImGui();
         void shutdownImGui();
         

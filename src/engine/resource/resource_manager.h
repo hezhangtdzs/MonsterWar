@@ -62,6 +62,12 @@ namespace engine::resource {
 		 */
 		bool loadResources(std::string_view mapping_path, bool preload = true);
 
+		/**
+		 * @brief 预加载当前映射表中已解析的纹理、音效和音乐资源。
+		 * @return 预加载完成返回 true。
+		 */
+		bool preloadMappedResources();
+
 		// --- 统一资源访问接口 ---
 	// -- Texture --
 		/**

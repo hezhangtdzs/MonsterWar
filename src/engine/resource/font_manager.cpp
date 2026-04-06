@@ -93,7 +93,7 @@ TTF_Font* FontManager::getFont(ResourceId id, std::string_view file_path, int po
         return nullptr;
     }
 
-    spdlog::warn("字体 '{}' ({}pt, id={}) 不在缓存中，尝试加载。", file_path, point_size, id);
+   spdlog::debug("字体 '{}' ({}pt, id={}) 不在缓存中，尝试加载。", file_path, point_size, id);
     return loadFont(id, file_path, point_size);
 }
 

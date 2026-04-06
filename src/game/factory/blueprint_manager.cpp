@@ -393,11 +393,11 @@ data::SoundBlueprint BlueprintManager::parseSound(const nlohmann::json& json) {
     }
 
     for (auto& [sound_key, sound_value] : json["sounds"].items()) {
-        std::string sound_path = sound_value.get<std::string>();
-        entt::id_type sound_id = entt::hashed_string(sound_path.c_str());
+        std::string sound_key_name = sound_value.get<std::string>();
+        entt::id_type sound_id = entt::hashed_string(sound_key_name.c_str());
 
-        // 预加载音效资源
-        resource_manager_.loadSound(sound_id, sound_path);
+      // 通过资源映射表解析真实音效路径并预加载
+        resource_manager_.getSound(sound_id);
 
         entt::id_type sound_key_id = entt::hashed_string(sound_key.c_str());
         sounds.sounds_.emplace(sound_key_id, sound_id);

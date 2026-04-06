@@ -469,15 +469,7 @@ entt::entity EntityFactory::createEffectVisual(entt::id_type effect_id,
     }
 
     const auto& blueprint = blueprint_manager_.getEffectBlueprint(effect_id);
-    auto entity = [&]() {
-        auto view = registry_.view<game::defs::VisualEffectTag, game::defs::InactiveVisualTag>();
-        if (auto it = view.begin(); it != view.end()) {
-            auto reused = *it;
-            registry_.remove<game::defs::InactiveVisualTag>(reused);
-            return reused;
-        }
-        return registry_.create();
-    }();
+    auto entity = registry_.create();
 
     if (!registry_.all_of<game::defs::VisualEffectTag>(entity)) {
         registry_.emplace<game::defs::VisualEffectTag>(entity);

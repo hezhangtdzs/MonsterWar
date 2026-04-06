@@ -79,7 +79,7 @@ void HeroSkillSystem::onUpgradeHeroEvent(const game::defs::UpgradeHeroEvent& eve
 }
 
 void HeroSkillSystem::onReleaseHeroSkillEvent(const game::defs::ReleaseHeroSkillEvent& event) {
-    onSkillActiveEvent(game::defs::SkillActiveEvent{ event.entity_ });
+    dispatcher_.enqueue(game::defs::SkillActiveEvent{ event.entity_ });
 }
 
 void HeroSkillSystem::onSkillReadyEvent(const game::defs::SkillReadyEvent& event) {
@@ -134,7 +134,7 @@ void HeroSkillSystem::onSkillActiveEvent(const game::defs::SkillActiveEvent& eve
     if (skill->skill_id_ == entt::hashed_string("shield").value() && !registry_.all_of<game::defs::ActionLockTag>(event.entity_)) {
         dispatcher_.enqueue(engine::utils::PlayAnimationEvent{ event.entity_, "guard"_hs, true });
     }
-    dispatcher_.trigger(game::defs::SpawnEffectVisualEvent{ event.entity_, entt::hashed_string("skill_active").value() });
+    dispatcher_.enqueue(game::defs::SpawnEffectVisualEvent{ event.entity_, entt::hashed_string("skill_active").value() });
     ENGINE_LOG_INFO("[HeroSkillSystem::onSkillActiveEvent] 英雄释放技能 entity={}, skill={}", entt::to_integral(event.entity_), blueprint.name_);
 }
 

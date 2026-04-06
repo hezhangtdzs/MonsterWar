@@ -32,6 +32,7 @@ namespace engine::core {
 
         // 图形设置
         bool vsync_enabled_ = true;             ///< 是否启用垂直同步
+        std::string renderer_backend_ = "sdl";  ///< 渲染后端：sdl、opengl 或 vulkan
 
         // 性能设置
         int target_fps_ = 144;                  ///< 目标 FPS 设置，0 表示不限制

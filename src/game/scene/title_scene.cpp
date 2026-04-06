@@ -38,8 +38,8 @@ void TitleScene::init() {
     ui_manager->addElement(std::move(background));
 
     auto panel = std::unique_ptr<engine::ui::UIPanel>(new engine::ui::UIPanel(context_));
-    panel->setPosition({ window_size.x * 0.5f - 180.0f, window_size.y * 0.5f - 140.0f });
-    panel->setSize({ 360.0f, 260.0f });
+    panel->setPosition({ (window_size.x - 280.0f) * 0.5f, (window_size.y - 160.0f) * 0.5f });
+    panel->setSize({ 280.0f, 160.0f });
     panel->setBackgroundColor({ 0.0f, 0.0f, 0.0f, 0.45f });
     panel->setBorderWidth(2.0f);
     panel->setBorderColor({ 1.0f, 1.0f, 1.0f, 0.25f });
@@ -47,25 +47,19 @@ void TitleScene::init() {
 
     auto title = std::unique_ptr<engine::ui::UIText>(new engine::ui::UIText(context_, "Monster War", "assets/fonts/VonwaonBitmap-16px.ttf", 36));
     title->setAlignment(engine::ui::TextAlignment::CENTER);
-    title->setPosition({ 180.0f, 52.0f });
+    title->setPosition({ 140.0f, 34.0f });
     title->setColor({ 1.0f, 0.96f, 0.72f, 1.0f });
     panel_ptr->addChild(std::move(title));
 
-    auto subtitle = std::unique_ptr<engine::ui::UIText>(new engine::ui::UIText(context_, "主线 / 支线 / 路线图", "assets/fonts/VonwaonBitmap-16px.ttf", 18));
-    subtitle->setAlignment(engine::ui::TextAlignment::CENTER);
-    subtitle->setPosition({ 180.0f, 100.0f });
-    subtitle->setColor({ 0.9f, 0.9f, 0.9f, 1.0f });
-    panel_ptr->addChild(std::move(subtitle));
-
     auto start_button = std::unique_ptr<engine::ui::UIButton>(new engine::ui::UIButton(context_, "开始游戏", "assets/fonts/VonwaonBitmap-16px.ttf", 24));
-    start_button->setPosition({ 80.0f, 140.0f });
-    start_button->setSize({ 200.0f, 40.0f });
+    start_button->setPosition({ 40.0f, 72.0f });
+    start_button->setSize({ 200.0f, 32.0f });
     start_button->setClickCallback([this]() { startGame(); });
     panel_ptr->addChild(std::move(start_button));
 
     auto quit_button = std::unique_ptr<engine::ui::UIButton>(new engine::ui::UIButton(context_, "退出", "assets/fonts/VonwaonBitmap-16px.ttf", 24));
-    quit_button->setPosition({ 80.0f, 190.0f });
-    quit_button->setSize({ 200.0f, 40.0f });
+    quit_button->setPosition({ 40.0f, 112.0f });
+    quit_button->setSize({ 200.0f, 32.0f });
     quit_button->setClickCallback([this]() { quit(); });
     panel_ptr->addChild(std::move(quit_button));
 

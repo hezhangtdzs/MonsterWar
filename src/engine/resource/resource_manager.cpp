@@ -111,6 +111,29 @@ bool engine::resource::ResourceManager::loadResources(std::string_view mapping_p
 	return true;
 }
 
+bool engine::resource::ResourceManager::preloadMappedResources() {
+	auto preload_map = [this](const std::unordered_map<ResourceId, std::string>& mapping, auto loader) {
+		for (const auto& [id, path] : mapping) {
+			try {
+				loader(id, path);
+			} catch (const std::exception& e) {
+				spdlog::error("预加载资源失败: {} ({})", path, e.what());
+			}
+		}
+	};
+
+	preload_map(texture_mapping_, [this](ResourceId id, const std::string& path) {
+		loadTexture(id, path);
+	});
+	preload_map(sound_mapping_, [this](ResourceId id, const std::string& path) {
+		loadSound(id, path);
+	});
+	preload_map(music_mapping_, [this](ResourceId id, const std::string& path) {
+		loadMusic(id, path);
+	});
+	return true;
+}
+
 
 // --- 统一资源访问接口 ---
 

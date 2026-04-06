@@ -54,11 +54,10 @@ void AnimationStateSystem::onAnimationFinished(const AnimationFinishedEvent& eve
         if (registry_.all_of<RenderComponent>(entity)) {
             registry_.remove<RenderComponent>(entity);
         }
-        if (registry_.all_of<InactiveVisualTag>(entity)) {
-            return;
+        if (!registry_.all_of<DeadTag>(entity)) {
+            registry_.emplace<DeadTag>(entity);
         }
-        registry_.emplace<InactiveVisualTag>(entity);
-        ENGINE_LOG_DEBUG("视觉实体动画结束并回收: {}", entt::to_integral(entity));
+        ENGINE_LOG_DEBUG("视觉实体动画结束并标记删除: {}", entt::to_integral(entity));
         return;
     }
 

@@ -25,7 +25,7 @@ namespace game::system {
 			if (registry_.all_of<game::defs::DeadTag>(event.entity_)) {
 				return;
 			}
-          ENGINE_LOG_INFO("动画事件: entity={}, event_id={:x}, animation_id={:x}", entt::to_integral(event.entity_), event.event_id_, event.animation_id_);
+           ENGINE_LOG_DEBUG("动画事件: entity={}, event_id={:x}, animation_id={:x}", entt::to_integral(event.entity_), event.event_id_, event.animation_id_);
 		} else {
           ENGINE_LOG_WARN("无效实体: entity={}, event_id={:x}, animation_id={:x}", entt::to_integral(event.entity_), event.event_id_, event.animation_id_);
 			return;

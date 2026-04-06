@@ -11,6 +11,25 @@
 #include "engine/utils/logging.h"
 #include <entt/signal/dispatcher.hpp>
 #include <chrono>
+#include <string>
+#include <string_view>
+
+static std::string getRendererBackendFromArgs(int argc, char* argv[])
+{
+    for (int i = 1; i < argc; ++i) {
+        if (argv[i] == nullptr) {
+            continue;
+        }
+
+        constexpr std::string_view prefix = "--renderer=";
+        std::string_view arg = argv[i];
+        if (arg.starts_with(prefix)) {
+            return std::string(arg.substr(prefix.size()));
+        }
+    }
+
+    return {};
+}
 /**
  * @brief 游戏的主入口函数。
  * @param argc 命令行参数数量
@@ -35,10 +54,11 @@ void setupInitialScene(engine::core::Context& context) {
 }
 
 
-int main(int /* argc */, char* /* argv */[]) {
+int main(int argc, char* argv[]) {
     _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
     engine::core::GameApp app;
     spdlog::set_level(spdlog::level::debug);
+    app.setRendererBackend(getRendererBackendFromArgs(argc, argv));
     app.setOnInitCallback(setupInitialScene);
     app.run();
     return 0;

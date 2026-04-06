@@ -7,6 +7,7 @@
 #include "../../engine/scene/scene.h"
 #include "../../engine/system/fwd.h"
 #include <entt/core/hashed_string.hpp>
+#include <future>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -20,6 +21,10 @@ namespace game::factory {
 namespace game::data {
     class SessionData;
     class UIConfig;
+}
+
+namespace engine::loader {
+    struct LevelLoadData;
 }
 
 namespace engine::ui {
@@ -91,6 +96,12 @@ private:
     std::unique_ptr<game::data::UIConfig> ui_config_;
     game::data::GameStats game_stats_;
 
+    struct PendingSaveTask {
+        std::string save_path;
+        std::future<bool> task;
+    };
+    std::vector<PendingSaveTask> pending_save_tasks_;
+
     std::string font_path_ = "assets/fonts/VonwaonBitmap-16px.ttf";
 
     engine::ui::UIText* hud_text_ = nullptr;
@@ -132,7 +143,7 @@ public:
     void clean() override;
 
 private:
-    [[nodiscard]] bool loadLevel();
+    [[nodiscard]] bool loadLevel(const engine::loader::LevelLoadData& level_data);
     [[nodiscard]] bool loadLevelConfig();
     [[nodiscard]] bool initSessionData();
     [[nodiscard]] bool initUIConfig();
@@ -151,6 +162,7 @@ private:
     void updateHealthBars();
     void refreshHudText();
     void setPauseOverlayVisible(bool visible);
+    bool waitForPendingSaveTasks(bool log_as_error);
     void createUnitsPortraitUI();
     [[nodiscard]] bool togglePause();
     void spawnNextEnemy();

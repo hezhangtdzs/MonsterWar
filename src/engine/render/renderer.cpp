@@ -141,7 +141,7 @@ namespace engine::render {
             return;
         }
 
-        static const Image circle_image("ui_circle");
+        static const Image circle_image(engine::resource::toResourceId("ui_circle"));
         const glm::vec2 screen_center = camera.worldToScreen(center);
         drawUIImage(circle_image, screen_center - glm::vec2(radius, radius), glm::vec2{ radius * 2.0f, radius * 2.0f }, color);
     }

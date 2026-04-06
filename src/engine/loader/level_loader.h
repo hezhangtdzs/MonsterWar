@@ -5,6 +5,8 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <future>
+#include <vector>
 
 
 #include "../utils/math.h"
@@ -31,6 +33,20 @@ namespace engine::loader {
     struct TileData {
         engine::component::TileInfo info; ///< 瓦片的基本渲染信息
         const nlohmann::json* json_ptr = nullptr; ///< 指向 tileset 中该瓦片 JSON 对象的指针
+    };
+
+    struct ParsedTileset {
+        int first_gid = -1;
+        std::string file_path;
+        nlohmann::json json_data;
+    };
+
+    struct LevelLoadData {
+        std::string level_path;
+        nlohmann::json level_json;
+        std::vector<ParsedTileset> tilesets;
+        bool valid_ = false;
+        std::string error_message;
     };
 
 
@@ -68,6 +84,21 @@ namespace engine::loader {
          * @return bool 如果加载并解析成功则返回 true。
          */
         [[nodiscard]]bool loadLevel(const std::string& map_path, engine::scene::Scene* scene);
+
+        /**
+         * @brief 异步读取并解析关卡文件与 tileset 文件。
+         * @param map_path Tiled JSON 地图文件的完整路径。
+         * @return future 关卡解析结果。
+         */
+        [[nodiscard]] static std::future<LevelLoadData> loadLevelDataAsync(const std::string& map_path);
+
+        /**
+         * @brief 将已经解析好的关卡数据应用到场景中。
+         * @param level_data 解析完成的关卡数据。
+         * @param scene 指向要填充数据的场景实例。
+         * @return bool 如果应用成功则返回 true。
+         */
+        [[nodiscard]] bool applyLevelData(const LevelLoadData& level_data, engine::scene::Scene* scene);
 
         /**
          * @brief 设置自定义实体构建器

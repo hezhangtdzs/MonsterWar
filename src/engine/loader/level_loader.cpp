@@ -22,94 +22,146 @@
 #include <SDL3/SDL_rect.h>
 #include <entt/core/hashed_string.hpp>
 #include <entt/entity/entity.hpp>
+#include <future>
 
 namespace engine::loader {
+
+namespace {
+
+bool readJsonFile(const std::string& file_path, nlohmann::json& out_json, std::string& error_message) {
+    std::ifstream file(file_path);
+    if (!file.is_open()) {
+        error_message = "无法打开文件: " + file_path;
+        return false;
+    }
+
+    try {
+        file >> out_json;
+        return true;
+    } catch (const nlohmann::json::parse_error& e) {
+        error_message = "解析 JSON 文件失败: " + file_path + " (" + e.what() + ")";
+        return false;
+    }
+}
+
+std::string resolvePathForFile(const std::string& relative_path, const std::string& file_path) {
+    try {
+        const auto base_dir = std::filesystem::path(file_path).parent_path();
+        return std::filesystem::canonical(base_dir / relative_path).string();
+    } catch (const std::exception&) {
+        return relative_path;
+    }
+}
+
+} // namespace
+
+std::future<LevelLoadData> LevelLoader::loadLevelDataAsync(const std::string& map_path) {
+    return std::async(std::launch::async, [map_path]() {
+        LevelLoadData level_data;
+        level_data.level_path = map_path;
+
+        if (!readJsonFile(map_path, level_data.level_json, level_data.error_message)) {
+            return level_data;
+        }
+
+        if (level_data.level_json.contains("tilesets") && level_data.level_json["tilesets"].is_array()) {
+            for (const auto& tileset_json : level_data.level_json["tilesets"]) {
+                if (!tileset_json.contains("source") || !tileset_json["source"].is_string() ||
+                    !tileset_json.contains("firstgid") || !tileset_json["firstgid"].is_number_integer()) {
+                    level_data.error_message = "tilesets 对象中缺少有效 'source' 或 'firstgid' 字段。";
+                    return level_data;
+                }
+
+                const auto tileset_path = resolvePathForFile(tileset_json["source"].get<std::string>(), map_path);
+                ParsedTileset parsed_tileset;
+                parsed_tileset.first_gid = tileset_json["firstgid"].get<int>();
+                parsed_tileset.file_path = tileset_path;
+                if (!readJsonFile(tileset_path, parsed_tileset.json_data, level_data.error_message)) {
+                    return level_data;
+                }
+                parsed_tileset.json_data["file_path"] = tileset_path;
+                level_data.tilesets.emplace_back(std::move(parsed_tileset));
+            }
+        }
+
+        level_data.valid_ = true;
+        return level_data;
+    });
+}
+
+bool LevelLoader::applyLevelData(const LevelLoadData& level_data, engine::scene::Scene* scene) {
+    if (!level_data.valid_) {
+        spdlog::error("关卡数据无效: {}", level_data.error_message);
+        return false;
+    }
+    if (!scene) {
+        spdlog::error("关卡应用失败：scene 为空");
+        return false;
+    }
+
+    scene_ = scene;
+    if (!entity_builder_) {
+        entity_builder_ = std::make_unique<BasicEntityBuilder>(*this, scene->getContext(), scene->getRegistry());
+    }
+
+    map_path_ = level_data.level_path;
+    tileset_data_.clear();
+    cache_ = {};
+
+    const auto& json_data = level_data.level_json;
+    map_size_ = glm::ivec2(json_data.value("width", 0), json_data.value("height", 0));
+    tile_size_ = glm::ivec2(json_data.value("tilewidth", 0), json_data.value("tileheight", 0));
+    if (json_data.contains("backgroundcolor")) {
+        const auto color_string = json_data["backgroundcolor"].get<std::string>();
+        const auto color = engine::utils::parseHexColor(color_string);
+        scene_->getContext().getRenderer().setBackgroundColor(color);
+    }
+
+    for (const auto& tileset : level_data.tilesets) {
+        tileset_data_[tileset.first_gid] = tileset.json_data;
+    }
+
+    current_layer_ = 0;
+    if (!json_data.contains("layers") || !json_data["layers"].is_array()) {
+        spdlog::error("地图文件 '{}' 中缺少或无效的 'layers' 数组。", map_path_);
+        return false;
+    }
+
+    for (const auto& layer_json : json_data["layers"]) {
+        std::string layer_type = layer_json.value("type", "none");
+        if (!layer_json.value("visible", true)) {
+            spdlog::info("图层 '{}' 不可见，跳过加载。", layer_json.value("name", "Unnamed"));
+            continue;
+        }
+        if (layer_json.contains("properties")) {
+            for (auto& property : layer_json["properties"]) {
+                if (property.contains("name") && property["name"] == "order") {
+                    current_layer_ = property["value"].get<int>();
+                }
+            }
+        }
+
+        if (layer_type == "imagelayer") {
+            loadImageLayer(layer_json);
+        } else if (layer_type == "tilelayer") {
+            loadTileLayer(layer_json);
+        } else if (layer_type == "objectgroup") {
+            loadObjectLayer(layer_json);
+        } else {
+            spdlog::warn("不支持的图层类型: {}", layer_type);
+        }
+        current_layer_++;
+    }
+
+    spdlog::info("关卡数据应用完成: {}", map_path_);
+    return true;
+}
 
     LevelLoader::~LevelLoader() = default;
 
     bool LevelLoader::loadLevel(const std::string& level_path, engine::scene::Scene* scene) {
-        scene_ = scene; // 存储当前场景指针，方便后续加载过程中直接添加对象
-        if (!entity_builder_) {
-            entity_builder_ = std::make_unique<BasicEntityBuilder>(*this, scene->getContext(), scene->getRegistry());
-        }
-        // 1. 加载 JSON 文件
-        std::ifstream file(level_path);
-        if (!file.is_open()) {
-            spdlog::error("无法打开关卡文件: {}", level_path);
-            return false;
-        }
-
-        // 2. 解析 JSON 数据
-        nlohmann::json json_data;
-        try {
-            file >> json_data;
-        }
-        catch (const nlohmann::json::parse_error& e) {
-            spdlog::error("解析 JSON 数据失败: {}", e.what());
-            return false;
-        }
-
-        // 3. 获取基本地图信息 (名称、地图尺寸、瓦片尺寸)
-        map_path_ = level_path;
-        map_size_ = glm::ivec2(json_data.value("width", 0), json_data.value("height", 0));
-        tile_size_ = glm::ivec2(json_data.value("tilewidth", 0), json_data.value("tileheight", 0));
-        if (json_data.contains("backgroundcolor")) {
-            auto color_string = json_data["backgroundcolor"].get<std::string>();
-            auto color = engine::utils::parseHexColor(color_string);
-            scene_->getContext().getRenderer().setBackgroundColor(color);
-        }
-        // 4. 加载 tileset 数据
-        if (json_data.contains("tilesets") && json_data["tilesets"].is_array()) {
-            for (const auto& tileset_json : json_data["tilesets"]) {
-                if (!tileset_json.contains("source") || !tileset_json["source"].is_string() ||
-                    !tileset_json.contains("firstgid") || !tileset_json["firstgid"].is_number_integer()) {
-                    spdlog::error("tilesets 对象中缺少有效 'source' 或 'firstgid' 字段。");
-                    continue;
-                }
-                auto tileset_path = resolvePath(tileset_json["source"], map_path_);  // 支持隐式转换，可以省略.get<T>()方法，
-                auto first_gid = tileset_json["firstgid"];
-                loadTileset(tileset_path, first_gid);
-            }
-        }
-
-        // 5. 加载图层数据
-        if (!json_data.contains("layers") || !json_data["layers"].is_array()) {       // 地图文件中必须有 layers 数组
-            spdlog::error("地图文件 '{}' 中缺少或无效的 'layers' 数组。", level_path);
-            return false;
-        }
-        for (const auto& layer_json : json_data["layers"]) {
-            // 获取各图层对象中的类型（type）字段
-            std::string layer_type = layer_json.value("type", "none");
-            if (!layer_json.value("visible", true)) {
-                spdlog::info("图层 '{}' 不可见，跳过加载。", layer_json.value("name", "Unnamed"));
-                continue;
-            }
-            if (layer_json.contains("properties")) {
-                for (auto& property : layer_json["properties"]) {
-                    if (property.contains("name") && property["name"] == "order") {
-                        current_layer_ = property["value"].get<int>();
-                    }
-                }
-            }
-
-            // 根据图层类型决定加载方法
-            if (layer_type == "imagelayer") {
-                loadImageLayer(layer_json);
-            }
-            else if (layer_type == "tilelayer") {
-                loadTileLayer(layer_json);
-            }
-            else if (layer_type == "objectgroup") {
-                loadObjectLayer(layer_json);
-            }
-            else {
-                spdlog::warn("不支持的图层类型: {}", layer_type);
-            }
-            current_layer_++; // 准备下一个图层的默认渲染顺序索引
-        }
-
-        spdlog::info("关卡加载完成: {}", level_path);
-        return true;
+        auto level_data = loadLevelDataAsync(level_path).get();
+        return applyLevelData(level_data, scene);
     }
 
     void LevelLoader::loadImageLayer(const nlohmann::json& layer_json) {

@@ -15,6 +15,7 @@
 #include "../audio/audio_locator.h"
 #include "../audio/log_audio_player.h"
 #include "../utils/events.h"
+#include "../utils/future_utils.h"
 #include "../../game/defs/event.h"
 #include "../scene/scene.h"
 #include "../../game/data/game_stats.h"
@@ -75,6 +76,11 @@ void engine::core::GameApp::setOnInitCallback(std::function<void(engine::core::C
     on_init_ = std::move(callback);
 }
 
+void engine::core::GameApp::setRendererBackend(std::string backend)
+{
+	renderer_backend_override_ = std::move(backend);
+}
+
 /**
  * @brief 初始化所有游戏系统。
  * @return 初始化成功返回 true，否则返回 false。
@@ -96,6 +102,15 @@ bool engine::core::GameApp::init()
         initSceneManager()&&
 		initImGui()) 
 	{
+      if (!waitForResourceMapping(true)) {
+			return false;
+		}
+
+		if (resource_manager_ && !resource_manager_->preloadMappedResources()) {
+			spdlog::error("主线程预加载资源失败。");
+			return false;
+		}
+
 		spdlog::info("游戏应用程序初始化成功。");
 		
 		
@@ -184,6 +199,13 @@ void engine::core::GameApp::close()
 {
 	dispatcher_->sink<engine::utils::QuitEvent>().disconnect<&GameApp::onQuitEvent>(this);
 	spdlog::trace("关闭 GameApp ...");
+   if (resource_mapping_future_.valid()) {
+		try {
+			resource_mapping_future_.get();
+		} catch (const std::exception& e) {
+			spdlog::warn("资源映射异步任务结束异常: {}", e.what());
+		}
+	}
  shutdownImGui();
 	if (sdl_renderer_ != nullptr) {
 		SDL_DestroyRenderer(sdl_renderer_);
@@ -255,6 +277,10 @@ void engine::core::GameApp::renderImGui()
 	}
 
 	auto* current_scene = scene_manager_ ? scene_manager_->getCurrentScene() : nullptr;
+   if (current_scene && current_scene->getSceneName() == "TitleScene") {
+		return;
+	}
+
  if (current_scene) {
 		auto& registry = current_scene->getRegistry();
 		if (registry.ctx().contains<game::data::GameStats&>()) {
@@ -383,7 +409,24 @@ bool engine::core::GameApp::initSDL()
 		return false;
 	}
 
-	sdl_renderer_ = SDL_CreateRenderer(window_, nullptr);
+   const std::string backend = !renderer_backend_override_.empty() ? renderer_backend_override_ : config_->renderer_backend_;
+	const char* renderer_driver = nullptr;
+	if (backend == "opengl") {
+		renderer_driver = "opengl";
+	} else if (backend == "vulkan") {
+		renderer_driver = "vulkan";
+	} else if (backend == "sdl" || backend == "default" || backend.empty()) {
+		renderer_driver = nullptr;
+	} else {
+		spdlog::warn("未知渲染后端 '{}'，回退到 SDL 默认后端。", backend);
+		renderer_driver = nullptr;
+	}
+	spdlog::info("当前渲染后端选择: {}", renderer_driver ? renderer_driver : "sdl(default)");
+	sdl_renderer_ = SDL_CreateRenderer(window_, renderer_driver);
+ if (sdl_renderer_ == nullptr && renderer_driver != nullptr) {
+		spdlog::warn("渲染后端 '{}' 创建失败，尝试回退到 SDL 默认后端。SDL错误: {}", renderer_driver, SDL_GetError());
+		sdl_renderer_ = SDL_CreateRenderer(window_, nullptr);
+	}
 	if (sdl_renderer_ == nullptr) {
 		spdlog::error("无法创建渲染器! SDL错误: {}", SDL_GetError());
 		return false;
@@ -420,7 +463,9 @@ bool engine::core::GameApp::initTime()
 bool engine::core::GameApp::initResourceManager() {
 	try {
 		resource_manager_ = std::make_unique<engine::resource::ResourceManager>(sdl_renderer_);
-		resource_manager_->loadResources("assets/data/resource_mapping.json");
+     resource_mapping_future_ = std::async(std::launch::async, [this]() -> bool {
+			return resource_manager_->loadResources("assets/data/resource_mapping.json", false) ? true : false;
+		});
 	}
 	catch (const std::exception& e) {
 		spdlog::error("初始化资源管理器失败: {}", e.what());
@@ -496,6 +541,21 @@ bool engine::core::GameApp::initInputManager()
 		return false;
 	}
 	return true;
+}
+
+bool engine::core::GameApp::waitForResourceMapping(bool log_as_error)
+{
+    return engine::utils::consumeFuture(
+		resource_mapping_future_,
+		[](bool result) { return result; },
+		[log_as_error](const std::exception& e) {
+			if (log_as_error) {
+				spdlog::error("等待资源映射异步任务失败: {}", e.what());
+			} else {
+				spdlog::warn("资源映射异步任务结束异常: {}", e.what());
+			}
+			return false;
+		});
 }
 
 /**

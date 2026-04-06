@@ -1,6 +1,14 @@
 cmake_minimum_required(VERSION 3.10.0)
 project(SunnyLand VERSION 0.1.0 LANGUAGES C CXX)
 
+# 可选第三方库根目录（例如 C:/Library）
+set(MONSTERWAR_3RDPARTY_ROOT "C:/Library" CACHE PATH "Third-party library root directory")
+if(EXISTS "${MONSTERWAR_3RDPARTY_ROOT}")
+    list(PREPEND CMAKE_PREFIX_PATH
+        "${MONSTERWAR_3RDPARTY_ROOT}"
+        "${MONSTERWAR_3RDPARTY_ROOT}/lib/cmake")
+endif()
+
 # C++ 标准
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -153,3 +161,19 @@ target_link_libraries(${TARGET}
     spdlog::spdlog
     EnTT::EnTT
 )
+
+# Windows 运行时 DLL 自动复制（动态链接场景）
+if(WIN32)
+    set(MONSTERWAR_RUNTIME_DLL_DIR "${MONSTERWAR_3RDPARTY_ROOT}/bin" CACHE PATH "Directory containing runtime DLLs")
+
+    foreach(_dll IN ITEMS SDL3.dll SDL3_image.dll SDL3_mixer.dll SDL3_ttf.dll)
+        if(EXISTS "${MONSTERWAR_RUNTIME_DLL_DIR}/${_dll}")
+            add_custom_command(TARGET ${TARGET} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                        "${MONSTERWAR_RUNTIME_DLL_DIR}/${_dll}"
+                        "$<TARGET_FILE_DIR:${TARGET}>/${_dll}")
+        else()
+            message(STATUS "[MonsterWar] runtime dll not found: ${MONSTERWAR_RUNTIME_DLL_DIR}/${_dll}")
+        endif()
+    endforeach()
+endif()

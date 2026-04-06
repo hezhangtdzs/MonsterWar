@@ -8,7 +8,8 @@
         "resizable": true
     },
     "graphics": {
-        "vsync": true
+        "vsync": true,
+        "renderer_backend": "sdl"
     },
     "performance": {
         "target_fps": 60

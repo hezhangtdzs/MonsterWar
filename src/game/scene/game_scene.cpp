@@ -8,6 +8,7 @@
 #include "./level_clear_scene.h"
 #include "../ui/units_portrait_ui.h"
 #include "../system/followpath_system.h"
+#include "../../engine/utils/future_utils.h"
 #include "../system/remove_dead_system.h"
 #include "../system/block_system.h"
 #include "../system/set_target_system.h"
@@ -56,6 +57,7 @@
 #include "../data/ui_config.h"
 #include <fstream>
 #include <algorithm>
+#include <future>
 #include <entt/core/hashed_string.hpp>
 #include <entt/signal/sigh.hpp>
 #include <nlohmann/json.hpp>
@@ -128,18 +130,11 @@ void GameScene::init() {
         clean();
     };
 
-    if (!loadLevel()) {
-        fail_and_clean("加载关卡失败");
-        return;
-    }
-    if (!initSessionData()) {
-        fail_and_clean("初始化 SessionData 失败");
-        return;
-    }
-    if (!initUIConfig()) {
-        fail_and_clean("初始化 UIConfig 失败");
-        return;
-    }
+    auto level_config_future = std::async(std::launch::async, [this]() { return loadLevelConfig(); });
+    auto session_data_future = std::async(std::launch::async, [this]() { return initSessionData(); });
+    auto ui_config_future = std::async(std::launch::async, [this]() { return initUIConfig(); });
+    std::future<engine::loader::LevelLoadData> level_data_future;
+
     if (!initEventConnections()) {
         fail_and_clean("初始化事件连接失败");
         return;
@@ -152,6 +147,47 @@ void GameScene::init() {
         fail_and_clean("初始化实体工厂失败");
         return;
     }
+
+    if (!level_config_future.get()) {
+        fail_and_clean("初始化关卡配置失败");
+        return;
+    }
+
+    level_data_future = engine::loader::LevelLoader::loadLevelDataAsync(current_map_path_);
+
+    engine::loader::LevelLoadData level_data;
+    if (!engine::utils::consumeFuture(
+        level_data_future,
+        [&](engine::loader::LevelLoadData data) {
+            level_data = std::move(data);
+            if (!level_data.valid_) {
+                ENGINE_LOG_ERROR("关卡数据解析失败: {}", level_data.error_message);
+                return false;
+            }
+            return true;
+        },
+        [&](const std::exception& e) {
+            ENGINE_LOG_ERROR("等待关卡数据异步任务失败: {}", e.what());
+            return false;
+        })) {
+        fail_and_clean("加载关卡失败");
+        return;
+    }
+
+    if (!session_data_future.get()) {
+        fail_and_clean("初始化 SessionData 失败");
+        return;
+    }
+    if (!ui_config_future.get()) {
+        fail_and_clean("初始化 UIConfig 失败");
+        return;
+    }
+
+    if (!loadLevel(level_data)) {
+        fail_and_clean("加载关卡失败");
+        return;
+    }
+
     if (!initRegistryContext()) {
         fail_and_clean("初始化注册表上下文失败");
         return;
@@ -265,6 +301,7 @@ void GameScene::render() {
 void GameScene::clean() {
     auto& dispatcher = context_.getDispatcher();
     auto& input_manager = context_.getInputManager();
+    waitForPendingSaveTasks(true);
     // 断开所有事件连接
     dispatcher.disconnect(this);
     // 断开输入信号连接
@@ -286,11 +323,40 @@ void GameScene::clean() {
     Scene::clean();
 }
 
-bool GameScene::loadLevel() {
-    if (!loadLevelConfig()) {
-        return false;
+bool GameScene::waitForPendingSaveTasks(bool log_as_error) {
+    bool all_ok = true;
+    for (auto& pending_task : pending_save_tasks_) {
+        if (!engine::utils::consumeFuture(
+            pending_task.task,
+            [&](bool result) {
+                if (!result) {
+                    all_ok = false;
+                    if (log_as_error) {
+                        ENGINE_LOG_ERROR("异步保存任务返回失败: {}", pending_task.save_path);
+                    } else {
+                        ENGINE_LOG_WARN("异步保存任务返回失败: {}", pending_task.save_path);
+                    }
+                }
+                return result;
+            },
+            [&](const std::exception& e) {
+                all_ok = false;
+                if (log_as_error) {
+                    ENGINE_LOG_ERROR("异步保存任务失败: {} ({})", pending_task.save_path, e.what());
+                } else {
+                    ENGINE_LOG_WARN("异步保存任务异常: {} ({})", pending_task.save_path, e.what());
+                }
+                return false;
+            })) {
+            all_ok = false;
+        }
     }
 
+    pending_save_tasks_.clear();
+    return all_ok;
+}
+
+bool GameScene::loadLevel(const engine::loader::LevelLoadData& level_data) {
     engine::loader::LevelLoader level_loader;
     // 设置拓展的构建器EntityBuilderMW
     level_loader.setEntityBuilder(std::make_unique<game::loader::EntityBuilderMW>(level_loader, 
@@ -299,7 +365,7 @@ bool GameScene::loadLevel() {
         waypoint_nodes_, 
         start_points_)
     );
-    if (!level_loader.loadLevel(current_map_path_, this)) {
+    if (!level_loader.applyLevelData(level_data, this)) {
         ENGINE_LOG_ERROR("加载关卡失败: {}", current_map_path_);
         return false;
     }
@@ -490,10 +556,10 @@ bool GameScene::initUI() {
     hud_panel->setBorderWidth(0.0f);
     auto* hud_panel_ptr = hud_panel.get();
 
-    auto hp_icon = std::make_unique<engine::ui::UIImage>(context_, "ui_circle", glm::vec2{ 14.0f, 14.0f }, glm::vec2{ 24.0f, 24.0f });
+    auto hp_icon = std::make_unique<engine::ui::UIImage>(context_, engine::resource::toResourceId("ui_circle"), glm::vec2{ 14.0f, 14.0f }, glm::vec2{ 24.0f, 24.0f });
     hud_panel_ptr->addChild(std::move(hp_icon));
 
-    auto gold_icon = std::make_unique<engine::ui::UIImage>(context_, "ui_weapon_icon", glm::vec2{ 14.0f, 50.0f }, glm::vec2{ 24.0f, 24.0f });
+    auto gold_icon = std::make_unique<engine::ui::UIImage>(context_, engine::resource::toResourceId("ui_weapon_icon"), glm::vec2{ 14.0f, 50.0f }, glm::vec2{ 24.0f, 24.0f });
     hud_panel_ptr->addChild(std::move(gold_icon));
 
     auto health_bar_layer = std::make_unique<engine::ui::UIPanel>(context_);
@@ -878,14 +944,31 @@ void GameScene::onSaveRequested(const game::defs::SaveEvent&) {
     }
 
     const std::string save_path = "assets/save/SLOT_1.json";
-    std::ofstream out_file(save_path);
-    if (!out_file.is_open()) {
-        ENGINE_LOG_ERROR("保存失败，无法写入文件: {}", save_path);
-        return;
-    }
+    const std::string payload = json_data.dump(4);
+    pending_save_tasks_.push_back(PendingSaveTask{
+        save_path,
+        std::async(std::launch::async, [save_path, payload]() -> bool {
+        try {
+            std::ofstream out_file(save_path);
+            if (!out_file.is_open()) {
+                ENGINE_LOG_ERROR("保存失败，无法写入文件: {}", save_path);
+                return false;
+            }
 
-    out_file << json_data.dump(4);
-    ENGINE_LOG_INFO("保存完成: {}", save_path);
+            out_file << payload;
+            if (!out_file.good()) {
+                ENGINE_LOG_ERROR("保存失败，写入文件异常: {}", save_path);
+                return false;
+            }
+            return true;
+        }
+        catch (const std::exception& e) {
+            ENGINE_LOG_ERROR("保存任务异常: {} ({})", save_path, e.what());
+            return false;
+        }
+        })
+    });
+    ENGINE_LOG_INFO("已提交异步保存任务: {}", save_path);
 }
 
 void GameScene::onLevelClearRequested(const game::defs::LevelClearEvent&) {
@@ -1030,7 +1113,7 @@ bool GameScene::onReleaseSelectedHeroSkill() {
         return false;
     }
 
-    context_.getDispatcher().trigger(game::defs::ReleaseHeroSkillEvent{ selected_unit });
+    context_.getDispatcher().enqueue(game::defs::ReleaseHeroSkillEvent{ selected_unit });
     ENGINE_LOG_INFO("技能释放热键已触发 entity={}", entt::to_integral(selected_unit));
     return true;
 }

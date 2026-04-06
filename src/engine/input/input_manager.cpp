@@ -41,6 +41,7 @@ InputManager::InputManager(SDL_Renderer* sdl_renderer, entt::dispatcher* dispatc
  */
 void InputManager::Update()
 {
+   mouse_wheel_delta_ = { 0.0f, 0.0f };
 	for (auto& [action_id, state] : action_states_) {
 		if (state == ActionState::PRESSED) {
 			state = ActionState::HELD;
@@ -154,6 +155,11 @@ glm::vec2 InputManager::getLogicalMousePosition() const
 	return logical_mouse_position_;
 }
 
+glm::vec2 InputManager::getMouseWheelDelta() const
+{
+	return mouse_wheel_delta_;
+}
+
 /**
  * @brief 处理单个 SDL 事件
  * 
@@ -162,8 +168,14 @@ glm::vec2 InputManager::getLogicalMousePosition() const
  */
 void InputManager::processEvent(const SDL_Event& event)
 {
-   if (ImGui::GetCurrentContext()) {
-		ImGui_ImplSDL3_ProcessEvent(&event);
+    if (ImGui::GetCurrentContext()) {
+		SDL_Event imgui_event = event;
+		if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN || event.type == SDL_EVENT_MOUSE_BUTTON_UP) {
+			SDL_RenderCoordinatesFromWindow(sdl_renderer_, static_cast<float>(event.button.x), static_cast<float>(event.button.y), &imgui_event.button.x, &imgui_event.button.y);
+		} else if (event.type == SDL_EVENT_MOUSE_MOTION) {
+			SDL_RenderCoordinatesFromWindow(sdl_renderer_, static_cast<float>(event.motion.x), static_cast<float>(event.motion.y), &imgui_event.motion.x, &imgui_event.motion.y);
+		}
+		ImGui_ImplSDL3_ProcessEvent(&imgui_event);
 		const ImGuiIO& io = ImGui::GetIO();
 		if ((event.type == SDL_EVENT_KEY_DOWN || event.type == SDL_EVENT_KEY_UP) && io.WantCaptureKeyboard) {
 			return;
@@ -215,6 +227,11 @@ void InputManager::processEvent(const SDL_Event& event)
 		// 计算逻辑渲染坐标系下的鼠标位置
         mouse_position_ = {event.motion.x, event.motion.y};
         SDL_RenderCoordinatesFromWindow(sdl_renderer_, mouse_position_.x, mouse_position_.y, &logical_mouse_position_.x, &logical_mouse_position_.y);
+		break;
+	}
+  case SDL_EVENT_MOUSE_WHEEL: {
+		mouse_wheel_delta_.x += static_cast<float>(event.wheel.x);
+		mouse_wheel_delta_.y += static_cast<float>(event.wheel.y);
 		break;
 	}
 	case SDL_EVENT_QUIT: {

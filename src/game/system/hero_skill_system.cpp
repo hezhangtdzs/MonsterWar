@@ -7,6 +7,7 @@
 #include "../data/game_stats.h"
 #include "../factory/blueprint_manager.h"
 #include "../defs/tags.h"
+#include "../../engine/utils/events.h"
 #include "../../engine/component/render_component.h"
 #include "../../engine/utils/logging.h"
 #include <memory>
@@ -42,19 +43,15 @@ void HeroSkillSystem::update(float delta_time) {
     auto& blueprint_manager = *blueprint_manager_ptr;
     auto& game_stats = registry_.ctx().get<game::data::GameStats&>();
 
-    auto view = registry_.view<game::component::HeroSkillComponent, game::component::StatsComponent, game::component::PlayerComponent>();
-    for (auto entity : view) {
-        auto& skill = view.get<game::component::HeroSkillComponent>(entity);
-
-        if (skill.passive_) {
-            if (blueprint_manager.hasSkillBlueprint(skill.skill_id_)) {
+    registry_.view<game::component::HeroSkillComponent, game::component::StatsComponent, game::component::PlayerComponent>().each(
+        [&](auto entity, game::component::HeroSkillComponent& skill, auto&, auto&) {
+            if (skill.passive_ && blueprint_manager.hasSkillBlueprint(skill.skill_id_)) {
                 const auto& blueprint = blueprint_manager.getSkillBlueprint(skill.skill_id_);
                 if (blueprint.cost_regen_ > 0.0f) {
                     game_stats.cost_ += blueprint.cost_regen_ * delta_time;
                 }
             }
-        }
-    }
+        });
 }
 
 void HeroSkillSystem::onUpgradeHeroEvent(const game::defs::UpgradeHeroEvent& event) {
@@ -134,6 +131,9 @@ void HeroSkillSystem::onSkillActiveEvent(const game::defs::SkillActiveEvent& eve
         registry_.remove<game::defs::SkillReadyTag>(event.entity_);
     }
     registry_.emplace_or_replace<game::defs::SkillActiveTag>(event.entity_);
+    if (skill->skill_id_ == entt::hashed_string("shield").value() && !registry_.all_of<game::defs::ActionLockTag>(event.entity_)) {
+        dispatcher_.enqueue(engine::utils::PlayAnimationEvent{ event.entity_, "guard"_hs, true });
+    }
     dispatcher_.trigger(game::defs::SpawnEffectVisualEvent{ event.entity_, entt::hashed_string("skill_active").value() });
     ENGINE_LOG_INFO("[HeroSkillSystem::onSkillActiveEvent] 英雄释放技能 entity={}, skill={}", entt::to_integral(event.entity_), blueprint.name_);
 }
@@ -153,6 +153,9 @@ void HeroSkillSystem::onSkillDurationEndEvent(const game::defs::SkillDurationEnd
         registry_.remove<game::defs::SkillActiveTag>(event.entity_);
     }
     deactivateSkill(event.entity_, skill, stats);
+    if (skill.skill_id_ == entt::hashed_string("shield").value() && !registry_.all_of<game::defs::ActionLockTag>(event.entity_)) {
+        dispatcher_.enqueue(engine::utils::PlayAnimationEvent{ event.entity_, "idle"_hs, true });
+    }
     ENGINE_LOG_INFO("[HeroSkillSystem::onSkillDurationEndEvent] 技能结束 entity={}", entt::to_integral(event.entity_));
 }
 

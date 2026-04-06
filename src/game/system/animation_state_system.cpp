@@ -1,6 +1,7 @@
 #include "animation_state_system.h"
 #include "game/component/enemy_component.h"
 #include "game/component/player_component.h"
+#include "game/component/hero_skill_component.h"
 #include "game/component/blocked_by_component.h"
 #include "game/defs/tags.h"
 #include "../../engine/component/animation_component.h"
@@ -72,7 +73,15 @@ void AnimationStateSystem::onAnimationFinished(const AnimationFinishedEvent& eve
             dispatcher_.enqueue(PlayAnimationEvent{entity, "walk"_hs, true});
         }
     } else if (registry_.all_of<PlayerComponent>(entity)) {
-        // 玩家：统一回 idle
+        if (registry_.all_of<SkillActiveTag>(entity) && registry_.all_of<game::component::HeroSkillComponent>(entity)) {
+            const auto& skill = registry_.get<game::component::HeroSkillComponent>(entity);
+            if (skill.skill_id_ == entt::hashed_string("shield").value()) {
+                ENGINE_LOG_DEBUG("动画结束后回切盾御实体守备姿态: {}", entt::to_integral(entity));
+                dispatcher_.enqueue(PlayAnimationEvent{entity, "guard"_hs, true});
+                return;
+            }
+        }
+
         ENGINE_LOG_DEBUG("动画结束后回切玩家实体: {}", entt::to_integral(entity));
         dispatcher_.enqueue(PlayAnimationEvent{entity, "idle"_hs, true});
     }

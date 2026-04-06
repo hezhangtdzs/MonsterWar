@@ -90,6 +90,11 @@
 - 已接入纹理 UI：使用 `assets/textures/UI` 下的 `frame`、`circle`、`title`、`weapon_icon` 构建更完整的 HUD 与暂停面板。
 - 已接入 ImGui 调试层：在运行时显示当前场景、暂停/结束状态，并预览 UI 纹理资源。
 - 已将肖像遮罩改为由共享 `GameStats.cost_` 驱动，`cost` 不足时自动显示灰色覆盖层。
+- 已接入肖像悬浮提示链路：头像按钮会派发 hover enter/leave 事件，`HeroInspectorUI` 可读取共享存档数据显示单位推导属性。
+- 已补齐升级与撤退规则事件：`UpgradeUnitEvent` / `RetreatEvent` 由 `GameRuleSystem` 统一处理金币、属性回算与单位移除。
+- 已新增标题场景：游戏启动后先进入 `TitleScene`，再由按钮进入关卡。
+- 已补齐 ImGui 设置与调试面板：支持暂停、倍速、音量、重开、回标题、保存、通关和资源调试。
+- 已将盾御技能的动画回切统一为 `guard` / `idle`，避免激活态与攻击态动画冲突。
 
 ---
 

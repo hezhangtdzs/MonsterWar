@@ -430,7 +430,7 @@ entt::entity EntityFactory::createProjectileVisual(entt::id_type projectile_id,
 
     addTransformComponent(entity, start_position);
     auto sprite = blueprint.sprite_;
-    sprite.face_right_ = direction.x >= 0.0f;
+    sprite.face_right_ = true;
     addSpriteComponent(entity, sprite);
     addRenderComponent(entity, 12);
 

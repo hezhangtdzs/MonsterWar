@@ -71,6 +71,7 @@ namespace engine::input
 
 		glm::vec2 logical_mouse_position_; ///< 逻辑渲染坐标系下的鼠标位置
 		glm::vec2 mouse_position_; ///< 窗口坐标系下的鼠标位置
+     glm::vec2 mouse_wheel_delta_{ 0.0f, 0.0f }; ///< 本帧鼠标滚轮增量
 	public:
 		/**
 		 * @brief 构造函数
@@ -120,6 +121,7 @@ namespace engine::input
 		 * @return 鼠标位置 (x, y)
 		 */
 		glm::vec2 getMousePosition() const;
+		glm::vec2 getMouseWheelDelta() const;
 
 		void quit();
 

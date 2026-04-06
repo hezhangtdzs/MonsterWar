@@ -3,6 +3,7 @@
 #include "../data/session_data.h"
 #include "../data/ui_config.h"
 #include "../data/game_stats.h"
+#include "../defs/event.h"
 #include "../factory/entity_factory.h"
 #include "../../engine/core/context.h"
 #include "../../engine/core/game_state.h"
@@ -29,6 +30,8 @@ void rebuildUnitsPortraitUI(engine::ui::UIPanel& anchor_panel,
                             const game::factory::EntityFactory& entity_factory,
                             const game::data::GameStats& game_stats,
                             const std::vector<entt::id_type>& hidden_unit_portrait_ids,
+                            float scroll_offset_x,
+                            float* content_width,
                             PortraitClickCallback on_portrait_selected) {
     anchor_panel.clearChildren();
 
@@ -53,15 +56,19 @@ void rebuildUnitsPortraitUI(engine::ui::UIPanel& anchor_panel,
         return lhs->name_ < rhs->name_;
     });
 
-    const int max_per_row = std::max(1, static_cast<int>((window_size.x - padding * 2.0f) / (frame_w + padding)));
     const int visible_count = static_cast<int>(std::count_if(units.begin(), units.end(), [&hidden_unit_portrait_ids](const auto* unit) {
         return std::find(hidden_unit_portrait_ids.begin(), hidden_unit_portrait_ids.end(), unit->name_id_) == hidden_unit_portrait_ids.end();
     }));
-    const int row_count = std::max(1, static_cast<int>((visible_count + max_per_row - 1) / max_per_row));
-    const float panel_height = static_cast<float>(row_count) * frame_h + padding * (static_cast<float>(row_count) + 1.0f);
+    const float content_width_value = padding + static_cast<float>(visible_count) * (frame_w + padding);
+    if (content_width) {
+        *content_width = content_width_value;
+    }
+
+    const float panel_width = window_size.x - padding * 2.0f;
+    const float panel_height = frame_h + padding * 2.0f;
 
     anchor_panel.setPosition(glm::vec2{ padding, window_size.y - panel_height });
-    anchor_panel.setSize(glm::vec2{ window_size.x - padding * 2.0f, panel_height });
+    anchor_panel.setSize(glm::vec2{ panel_width, panel_height });
 
     size_t visible_index = 0;
     for (const auto* unit : units) {
@@ -71,19 +78,25 @@ void rebuildUnitsPortraitUI(engine::ui::UIPanel& anchor_panel,
 
         const auto* portrait = ui_config.getPortrait(unit->name_id_);
         const auto* icon = ui_config.getIcon(unit->class_id_);
-        const auto* frame = ui_config.getPortraitFrame(unit->rarity_);
         const int cost = entity_factory.getPlayerUnitCost(unit->class_id_, unit->rarity_);
+        const bool affordable = cost <= game_stats.cost_;
+        const auto* frame = ui_config.getPortraitFrame(affordable ? 2 : 1);
 
         auto frame_panel = std::make_unique<engine::ui::UIButton>(context, std::string{}, layout.font_path_, layout.font_size_);
-        const int row = static_cast<int>(visible_index / static_cast<size_t>(max_per_row));
-        const int col = static_cast<int>(visible_index % static_cast<size_t>(max_per_row));
-        frame_panel->setPosition({ padding + static_cast<float>(col) * (frame_w + padding), padding + static_cast<float>(row) * (frame_h + padding) });
+        frame_panel->setPosition({ padding + static_cast<float>(visible_index) * (frame_w + padding) - scroll_offset_x, padding });
         frame_panel->setSize(layout.frame_size_);
         frame_panel->setId(unit->name_id_);
-        frame_panel->setClickCallback([on_portrait_selected, unit, cost]() {
-            if (on_portrait_selected) {
+        frame_panel->setInteractive(true);
+        frame_panel->setClickCallback([on_portrait_selected, unit, cost, affordable]() {
+            if (affordable && on_portrait_selected) {
                 on_portrait_selected(*unit, cost);
             }
+        });
+        frame_panel->setHoverEnterCallback([&context, name_id = unit->name_id_]() {
+            context.getDispatcher().trigger(game::defs::UIPortraitHoverEnterEvent{ name_id });
+        });
+        frame_panel->setHoverLeaveCallback([&context]() {
+            context.getDispatcher().trigger(game::defs::UIPortraitHoverLeaveEvent{});
         });
 
         if (portrait) {
@@ -106,8 +119,9 @@ void rebuildUnitsPortraitUI(engine::ui::UIPanel& anchor_panel,
         auto cover_panel = std::make_unique<engine::ui::UIPanel>(context);
         cover_panel->setPosition({ 0.0f, 0.0f });
         cover_panel->setSize(layout.frame_size_);
-        cover_panel->setBackgroundColor({ 0.35f, 0.35f, 0.35f, cost > game_stats.cost_ ? 0.45f : 0.0f });
-        cover_panel->setVisible(cost > game_stats.cost_);
+        cover_panel->setBackgroundColor(affordable ? engine::utils::FColor{ 0.0f, 0.0f, 0.0f, 0.0f }
+                                                   : engine::utils::FColor{ 0.45f, 0.45f, 0.45f, 0.45f });
+        cover_panel->setVisible(!affordable);
         frame_panel->addChild(std::move(cover_panel));
 
         anchor_panel.addChild(std::move(frame_panel), cost);

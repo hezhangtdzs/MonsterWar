@@ -6,7 +6,7 @@
 #include "engine/core/game_app.h"
 #include<spdlog/spdlog.h>
 #include "engine/scene/scene_manager.h"
-#include "game/scene/game_scene.h"
+#include "game/scene/title_scene.h"
 #include "engine/core/context.h"
 #include "engine/utils/logging.h"
 #include <entt/signal/dispatcher.hpp>
@@ -25,7 +25,7 @@
  */
 void setupInitialScene(engine::core::Context& context) {
     // GameApp在调用run方法之前，先创建并设置初始场景
-    auto game_scene = std::make_unique<game::scene::GameScene>(context);
+    auto game_scene = std::unique_ptr<engine::scene::Scene>(new game::scene::TitleScene(context));
     auto& dispatcher = context.getDispatcher();
     const auto t0 = std::chrono::steady_clock::now();
     dispatcher.trigger<engine::utils::PushSceneEvent>(engine::utils::PushSceneEvent{std::move(game_scene)});

@@ -103,6 +103,10 @@ private:
     engine::ui::UIButton* quit_button_ = nullptr;
     engine::ui::UIPanel* health_bar_layer_ = nullptr;
     engine::ui::UIPanel* unit_panel_ = nullptr;
+    int last_unit_panel_cost_ = -1;
+    float unit_panel_scroll_x_ = 0.0f;
+    float unit_panel_content_width_ = 0.0f;
+    float unit_panel_max_scroll_x_ = 0.0f;
     entt::id_type selected_unit_id_{ 0 };
     std::string selected_unit_name_;
     std::vector<entt::id_type> hidden_unit_portrait_ids_;
@@ -119,7 +123,7 @@ private:
     std::shared_ptr<game::factory::BlueprintManager> blueprint_manager_;// 蓝图管理器，负责管理蓝图数据
     
 public:
-    GameScene(engine::core::Context& context);
+    GameScene(engine::core::Context& context, std::size_t level_index = 0);
     ~GameScene();
 
     void init() override;
@@ -158,12 +162,19 @@ private:
     void onSpawnProjectileVisual(const game::defs::SpawnProjectileVisualEvent& event);
     void onSpawnEffectVisual(const game::defs::SpawnEffectVisualEvent& event);
     void onRemoveUIPortrait(const game::defs::RemoveUIPortraitEvent& event);
+    void onUIPortraitHoverEnter(const game::defs::UIPortraitHoverEnterEvent& event);
+    void onUIPortraitHoverLeave(const game::defs::UIPortraitHoverLeaveEvent& event);
+    void onRestartRequested(const game::defs::RestartEvent& event);
+    void onBackToTitleRequested(const game::defs::BackToTitleEvent& event);
+    void onSaveRequested(const game::defs::SaveEvent& event);
+    void onLevelClearRequested(const game::defs::LevelClearEvent& event);
 
     // 测试函数
     void createTestEnemy();
     bool onCreateTestPlayerMelee();
     bool onCreateTestPlayerRanged();
     bool onCreateTestPlayerHealer();
+    bool tryCreateTestPlayerUnit(entt::id_type class_id, const char* log_name, bool injured);
     bool onUpgradeClosestPlayer();
     bool onSellClosestPlayer();
     bool onReleaseSelectedHeroSkill();

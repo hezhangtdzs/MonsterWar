@@ -85,6 +85,8 @@ set(CORE_SOURCES
     src/engine/interface/observer.cpp
     
     src/game/scene/game_scene.cpp
+    src/game/scene/title_scene.cpp
+    src/game/scene/level_clear_scene.cpp
 
     src/game/data/session_data.cpp
     src/game/data/ui_config.cpp

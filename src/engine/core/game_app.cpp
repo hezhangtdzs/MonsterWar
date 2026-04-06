@@ -15,6 +15,7 @@
 #include "../audio/audio_locator.h"
 #include "../audio/log_audio_player.h"
 #include "../utils/events.h"
+#include "../../game/defs/event.h"
 #include "../scene/scene.h"
 #include "../../game/data/game_stats.h"
 #include "../../game/ui/hero_inspector_ui.h"
@@ -59,7 +60,7 @@ void engine::core::GameApp::run()
 	time_->setTimeScale(1.0);
 	while(is_running_) {
 		time_->update();
-		float delta_time = time_->getDeltaTime();
+       float delta_time = time_->getScaledDeltaTime();
 
 		handleEvents();
 		update(delta_time);
@@ -254,7 +255,7 @@ void engine::core::GameApp::renderImGui()
 	}
 
 	auto* current_scene = scene_manager_ ? scene_manager_->getCurrentScene() : nullptr;
-   if (current_scene) {
+ if (current_scene) {
 		auto& registry = current_scene->getRegistry();
 		if (registry.ctx().contains<game::data::GameStats&>()) {
 			auto& game_stats = registry.ctx().get<game::data::GameStats&>();
@@ -267,11 +268,85 @@ void engine::core::GameApp::renderImGui()
 				ImGuiWindowFlags_NoFocusOnAppearing |
 				ImGuiWindowFlags_NoNav;
 			ImGui::Begin("战况", nullptr, flags);
+			ImGui::Text("场景：%s", current_scene->getSceneName().c_str());
 			ImGui::Text("金币：%.1f", game_stats.cost_);
 			ImGui::Text("基地生命：%d", game_stats.home_hp_);
 			ImGui::Text("敌人击杀：%d", game_stats.enemy_killed_count_);
 			ImGui::End();
 		}
+	}
+
+	ImGui::SetNextWindowPos(ImVec2(12.0f, 130.0f), ImGuiCond_Once);
+	ImGui::SetNextWindowBgAlpha(0.85f);
+	ImGui::Begin("设置", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+    if (current_scene) {
+		auto& game_state = current_scene->getContext().getGameState();
+		if (ImGui::Button(game_state.isPaused() ? "继续" : "暂停")) {
+			game_state.setState(game_state.isPaused() ? engine::core::GameStateType::Playing
+													   : engine::core::GameStateType::Paused);
+		}
+	}
+	if (time_) {
+		float scale_value = time_->getTimeScale();
+		if (ImGui::SliderFloat("倍速", &scale_value, 0.25f, 2.0f, "%.2fx")) {
+			time_->setTimeScale(scale_value);
+		}
+		if (ImGui::Button("0.5x")) {
+			time_->setTimeScale(0.5);
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("1.0x")) {
+			time_->setTimeScale(1.0);
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("2.0x")) {
+			time_->setTimeScale(2.0);
+		}
+	}
+	if (audio_player_) {
+		float master = audio_player_->getMasterVolume();
+		float sound = audio_player_->getSoundVolume();
+		float music = audio_player_->getMusicVolume();
+		if (ImGui::SliderFloat("主音量", &master, 0.0f, 1.0f, "%.2f")) {
+			audio_player_->setMasterVolume(master);
+		}
+		if (ImGui::SliderFloat("音效音量", &sound, 0.0f, 1.0f, "%.2f")) {
+			audio_player_->setSoundVolume(sound);
+		}
+		if (ImGui::SliderFloat("音乐音量", &music, 0.0f, 1.0f, "%.2f")) {
+			audio_player_->setMusicVolume(music);
+		}
+	}
+	ImGui::End();
+
+	if (current_scene) {
+		auto& dispatcher = current_scene->getContext().getDispatcher();
+		ImGui::SetNextWindowPos(ImVec2(12.0f, 350.0f), ImGuiCond_Once);
+		ImGui::SetNextWindowBgAlpha(0.85f);
+		ImGui::Begin("调试工具", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+		if (ImGui::Button("重开关卡")) {
+			dispatcher.trigger(game::defs::RestartEvent{});
+		}
+		if (ImGui::Button("回标题")) {
+			dispatcher.trigger(game::defs::BackToTitleEvent{});
+		}
+		if (ImGui::Button("保存")) {
+			dispatcher.trigger(game::defs::SaveEvent{});
+		}
+		if (ImGui::Button("通关")) {
+			dispatcher.trigger(game::defs::LevelClearEvent{});
+		}
+		if (current_scene->getRegistry().ctx().contains<game::data::GameStats&>()) {
+			auto& game_stats = current_scene->getRegistry().ctx().get<game::data::GameStats&>();
+			if (ImGui::Button("COST +10")) {
+				game_stats.cost_ += 10.0f;
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("COST +100")) {
+				game_stats.cost_ += 100.0f;
+			}
+		}
+		ImGui::End();
 	}
 
 	if (current_scene && hero_inspector_ui_) {

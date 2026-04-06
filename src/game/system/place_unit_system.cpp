@@ -4,6 +4,7 @@
 #include "../component/unit_prep_component.h"
 #include "../component/player_component.h"
 #include "../component/stats_component.h"
+#include "../data/game_stats.h"
 #include "../defs/event.h"
 #include "../defs/tags.h"
 #include "../factory/entity_factory.h"
@@ -110,9 +111,22 @@ bool PlaceUnitSystem::onPlaceUnit() {
         return false;
     }
 
+    if (!registry_.ctx().contains<game::data::GameStats&>()) {
+        ENGINE_LOG_WARN("放置英雄失败: GameStats 上下文不存在");
+        return false;
+    }
+    auto& game_stats = registry_.ctx().get<game::data::GameStats&>();
+    if (game_stats.cost_ < static_cast<float>(prep->cost_)) {
+        ENGINE_LOG_WARN("放置英雄金币不足: current={}, need={}", static_cast<int>(game_stats.cost_), prep->cost_);
+        return false;
+    }
+
+    game_stats.cost_ -= static_cast<float>(prep->cost_);
+
     const glm::vec2 place_center = place_transform->position_ + (place_sprite ? (place_sprite->size_ * 0.5f) : glm::vec2{ 32.0f, 32.0f });
     const auto player_entity = entity_factory_.createPlayerUnit(prep->class_id_, place_center, prep->level_, prep->rarity_);
     if (player_entity == entt::null) {
+        game_stats.cost_ += static_cast<float>(prep->cost_);
         return false;
     }
 
@@ -130,7 +144,12 @@ bool PlaceUnitSystem::onPlaceUnit() {
 
     engine::audio::AudioLocator::get().playSound(entt::hashed_string("unit_placed").value());
 
-    ENGINE_LOG_INFO("出击确认成功: name_id={}, place_entity={}, player_entity={}", prep->name_id_, entt::to_integral(target_place_entity_), entt::to_integral(player_entity));
+    ENGINE_LOG_INFO("出击确认成功: name_id={}, cost={}, remaining_gold={}, place_entity={}, player_entity={}",
+                    prep->name_id_,
+                    prep->cost_,
+                    static_cast<int>(game_stats.cost_),
+                    entt::to_integral(target_place_entity_),
+                    entt::to_integral(player_entity));
     clearActivePrep();
     return true;
 }

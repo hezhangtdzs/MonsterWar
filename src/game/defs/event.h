@@ -72,6 +72,23 @@ struct PrepUnitEvent {
 	int rarity_{ 1 };
 };
 
+struct UIPortraitHoverEnterEvent {
+	entt::id_type name_id_{ 0 };
+};
+
+struct UIPortraitHoverLeaveEvent {};
+
+
+struct UpgradeUnitEvent {
+	entt::entity entity_{ entt::null };
+	int cost_{ 0 };
+};
+
+struct RetreatEvent {
+	entt::entity entity_{ entt::null };
+	int cost_{ 0 };
+};
+
 struct RemoveUIPortraitEvent {
 	entt::id_type name_id_{ 0 };
 };
@@ -99,5 +116,13 @@ struct SkillActiveEvent {
 struct SkillDurationEndEvent {
 	entt::entity entity_{ entt::null };
 };
+
+struct RestartEvent {};
+
+struct BackToTitleEvent {};
+
+struct SaveEvent {};
+
+struct LevelClearEvent {};
 
 }   // namespace game::defs

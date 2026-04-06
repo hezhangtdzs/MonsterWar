@@ -1,7 +1,9 @@
 {
     "sound": {
-        "ui_hover": "assets/audio/Fantasy_UI (1).wav",
-        "ui_click": "assets/audio/Piano_Ui (2).wav",
+        "ui_hover": "assets/audio/button_hover.wav",
+        "ui_click": "assets/audio/button_click.wav",
+        "button_hover": "assets/audio/button_hover.wav",
+        "button_click": "assets/audio/button_click.wav",
         "unit_placed": "assets/audio/Fantasy_UI (10).wav",
         "unit_upgrade": "assets/audio/Fantasy UI - Twilight (2).wav",
         "arrow_shoot": "assets/audio/Bow Attack.wav",

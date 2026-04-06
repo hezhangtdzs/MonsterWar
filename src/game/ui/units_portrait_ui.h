@@ -31,6 +31,8 @@ void rebuildUnitsPortraitUI(engine::ui::UIPanel& anchor_panel,
                             const game::factory::EntityFactory& entity_factory,
                             const game::data::GameStats& game_stats,
                             const std::vector<entt::id_type>& hidden_unit_portrait_ids,
+                            float scroll_offset_x,
+                            float* content_width,
                             PortraitClickCallback on_portrait_selected);
 
 } // namespace game::ui

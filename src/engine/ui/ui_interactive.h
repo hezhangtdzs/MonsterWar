@@ -40,7 +40,10 @@ namespace engine::ui {
         std::unordered_map<engine::resource::ResourceId, engine::resource::ResourceId> sound_; ///< 声音映射表
         engine::render::Image* current_image_ = nullptr; ///< 当前显示的精灵
         bool interactive_ = true; ///< 是否可交互
+        bool hovered_ = false; ///< 鼠标是否处于悬停状态
         std::function<void()> click_callback_; ///< 点击回调函数
+        std::function<void()> hover_enter_callback_; ///< 悬停进入回调函数
+        std::function<void()> hover_leave_callback_; ///< 悬停离开回调函数
 
     public:
         /**
@@ -146,6 +149,8 @@ namespace engine::ui {
          * @param callback 点击事件回调函数。
          */
         void setClickCallback(std::function<void()> callback);
+        void setHoverEnterCallback(std::function<void()> callback);
+        void setHoverLeaveCallback(std::function<void()> callback);
         
         /**
          * @brief 触发点击事件。

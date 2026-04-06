@@ -19,6 +19,8 @@ public:
 
 private:
     void onEnemyArriveHome(const game::defs::EnemyArriveHomeEvent& event);
+    void onUpgradeUnit(const game::defs::UpgradeUnitEvent& event);
+    void onRetreat(const game::defs::RetreatEvent& event);
 };
 
 } // namespace game::system

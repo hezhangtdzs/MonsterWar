@@ -21,6 +21,12 @@ namespace engine::ui {
  */
 bool UIInteractive::handleInput() {
     if (!visible_ || !enabled_ || !interactive_) {
+        if (hovered_) {
+            hovered_ = false;
+            if (hover_leave_callback_) {
+                hover_leave_callback_();
+            }
+        }
         return false;
     }
     
@@ -39,9 +45,21 @@ bool UIInteractive::handleInput() {
         }
     }
     
-    // 如果鼠标在范围内，拦截输入防止穿透
     auto& input_manager = context_.getInputManager();
-    if (containsPoint(input_manager.getLogicalMousePosition())) {
+    const bool mouse_inside = containsPoint(input_manager.getLogicalMousePosition());
+    if (mouse_inside != hovered_) {
+        hovered_ = mouse_inside;
+        if (hovered_) {
+            if (hover_enter_callback_) {
+                hover_enter_callback_();
+            }
+        } else if (hover_leave_callback_) {
+            hover_leave_callback_();
+        }
+    }
+
+    // 如果鼠标在范围内，拦截输入防止穿透
+    if (mouse_inside) {
         handled = true;
     }
     
@@ -235,6 +253,14 @@ bool UIInteractive::isInteractive() const {
  */
 void UIInteractive::setClickCallback(std::function<void()> callback) {
     click_callback_ = std::move(callback);
+}
+
+void UIInteractive::setHoverEnterCallback(std::function<void()> callback) {
+    hover_enter_callback_ = std::move(callback);
+}
+
+void UIInteractive::setHoverLeaveCallback(std::function<void()> callback) {
+    hover_leave_callback_ = std::move(callback);
 }
 
 /**

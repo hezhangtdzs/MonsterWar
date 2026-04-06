@@ -4,6 +4,8 @@
 #include "../factory/entity_factory.h"
 #include "../factory/blueprint_manager.h"
 #include "../loader/entity_builder_mw.h"
+#include "./title_scene.h"
+#include "./level_clear_scene.h"
 #include "../ui/units_portrait_ui.h"
 #include "../system/followpath_system.h"
 #include "../system/remove_dead_system.h"
@@ -31,6 +33,7 @@
 #include "../../engine/component/velocity_component.h"
 #include "../../engine/component/sprite_component.h"
 #include "../../engine/component/render_component.h"
+#include "../../engine/resource/resource_manager.h"
 #include "../../engine/input/input_manager.h"
 #include "../../engine/core/context.h"
 #include "../../engine/core/game_state.h"
@@ -61,10 +64,36 @@
 
 using namespace entt::literals;
 
+namespace {
+
+void appendEnemyTypesToQueue(const nlohmann::json& wave_json, std::vector<entt::id_type>& enemy_queue) {
+    if (!wave_json.contains("enemy_types") || !wave_json["enemy_types"].is_object()) {
+        return;
+    }
+
+    for (auto it = wave_json["enemy_types"].begin(); it != wave_json["enemy_types"].end(); ++it) {
+        if (!it.value().is_number_integer()) {
+            continue;
+        }
+
+        const int count = it.value().get<int>();
+        if (count <= 0) {
+            continue;
+        }
+
+        const auto class_id = entt::hashed_string(it.key().c_str());
+        for (int i = 0; i < count; ++i) {
+            enemy_queue.push_back(class_id);
+        }
+    }
+}
+
+} // namespace
+
 namespace game::scene {
 
-GameScene::GameScene(engine::core::Context& context)
-    : engine::scene::Scene("GameScene", context) {
+GameScene::GameScene(engine::core::Context& context, std::size_t level_index)
+    : engine::scene::Scene("GameScene", context), selected_level_index_(level_index) {
     auto& dispatcher = context.getDispatcher();
     // 初始化系统
     render_system_ = std::make_unique<engine::system::RenderSystem>();
@@ -149,10 +178,13 @@ void GameScene::init() {
         fail_and_clean("初始化 UI 失败");
         return;
     }
+    context_.getResourceManager().stopMusic();
+    context_.getResourceManager().playMusic(entt::hashed_string("battle_bgm").value());
     base_hp_ = game::defs::INITIAL_BASE_HP;
     game_stats_.home_hp_ = base_hp_;
     game_stats_.cost_ = static_cast<float>(game::defs::INITIAL_GOLD);
     game_stats_.cost_gen_per_second_ = 1.0f;
+    last_unit_panel_cost_ = static_cast<int>(game_stats_.cost_);
     current_wave_ = 0;
     wave_running_ = false;
     selected_unit_id_ = 0;
@@ -332,22 +364,7 @@ bool GameScene::loadLevelConfig() {
             WaveConfig wave;
             wave.spawn_interval_ = wave_json.value("spawn_interval", game::defs::WAVE_SPAWN_INTERVAL);
             wave.next_wave_interval_ = wave_json.value("next_wave_interval", game::defs::WAVE_BREAK_DURATION);
-
-            if (wave_json.contains("enemy_types") && wave_json["enemy_types"].is_object()) {
-                for (auto it = wave_json["enemy_types"].begin(); it != wave_json["enemy_types"].end(); ++it) {
-                    if (!it.value().is_number_integer()) {
-                        continue;
-                    }
-                    const int count = it.value().get<int>();
-                    if (count <= 0) {
-                        continue;
-                    }
-                    const auto class_id = entt::hashed_string(it.key().c_str());
-                    for (int i = 0; i < count; ++i) {
-                        wave.enemy_queue_.push_back(class_id);
-                    }
-                }
-            }
+            appendEnemyTypesToQueue(wave_json, wave.enemy_queue_);
 
             if (!wave.enemy_queue_.empty()) {
                 level_waves_.push_back(std::move(wave));
@@ -364,14 +381,17 @@ bool GameScene::initEventConnections() {
     dispatcher.sink<game::defs::SpawnProjectileVisualEvent>().connect<&GameScene::onSpawnProjectileVisual>(this);
     dispatcher.sink<game::defs::SpawnEffectVisualEvent>().connect<&GameScene::onSpawnEffectVisual>(this);
     dispatcher.sink<game::defs::RemoveUIPortraitEvent>().connect<&GameScene::onRemoveUIPortrait>(this);
+    dispatcher.sink<game::defs::UIPortraitHoverEnterEvent>().connect<&GameScene::onUIPortraitHoverEnter>(this);
+    dispatcher.sink<game::defs::UIPortraitHoverLeaveEvent>().connect<&GameScene::onUIPortraitHoverLeave>(this);
+    dispatcher.sink<game::defs::RestartEvent>().connect<&GameScene::onRestartRequested>(this);
+    dispatcher.sink<game::defs::BackToTitleEvent>().connect<&GameScene::onBackToTitleRequested>(this);
+    dispatcher.sink<game::defs::SaveEvent>().connect<&GameScene::onSaveRequested>(this);
+    dispatcher.sink<game::defs::LevelClearEvent>().connect<&GameScene::onLevelClearRequested>(this);
     return true;
 }
 
 bool GameScene::initInputConnections() {
     auto& input_manager = context_.getInputManager();
-    input_manager.onAction("upgrade"_hs).connect<&GameScene::onUpgradeClosestPlayer>(this);
-    input_manager.onAction("sell"_hs).connect<&GameScene::onSellClosestPlayer>(this);
-    input_manager.onAction("release_skill"_hs).connect<&GameScene::onReleaseSelectedHeroSkill>(this);
     input_manager.onAction("pause"_hs).connect<&GameScene::togglePause>(this);
     return true;
 }
@@ -462,7 +482,12 @@ bool GameScene::initUI() {
         return false;
     }
 
-    auto hud_panel = std::make_unique<engine::ui::UIImage>(context_, "ui_frame", glm::vec2{ 18.0f, 16.0f }, glm::vec2{ 300.0f, 96.0f });
+    auto hud_panel = std::make_unique<engine::ui::UIPanel>(context_);
+    hud_panel->setPosition({ window_size.x * 0.5f - 220.0f, 12.0f });
+    hud_panel->setSize({ 440.0f, 72.0f });
+    hud_panel->setBackgroundColor({ 0.0f, 0.0f, 0.0f, 0.0f });
+    hud_panel->setBorderColor({ 0.0f, 0.0f, 0.0f, 0.0f });
+    hud_panel->setBorderWidth(0.0f);
     auto* hud_panel_ptr = hud_panel.get();
 
     auto hp_icon = std::make_unique<engine::ui::UIImage>(context_, "ui_circle", glm::vec2{ 14.0f, 14.0f }, glm::vec2{ 24.0f, 24.0f });
@@ -486,13 +511,13 @@ bool GameScene::initUI() {
     ui_manager->addElement(std::move(pause_button));
 
     auto hud_text = std::make_unique<engine::ui::UIText>(context_, "", font_path_, 20);
-    hud_text->setPosition({ 46.0f, 12.0f });
+    hud_text->setPosition({ 12.0f, 6.0f });
     hud_text_ = hud_text.get();
     hud_text_->setColor({ 1.0f, 1.0f, 1.0f, 1.0f });
     hud_panel_ptr->addChild(std::move(hud_text));
 
     auto gold_text = std::make_unique<engine::ui::UIText>(context_, "", font_path_, 20);
-    gold_text->setPosition({ 46.0f, 50.0f });
+    gold_text->setPosition({ 12.0f, 34.0f });
     gold_text_ = gold_text.get();
     gold_text_->setColor({ 1.0f, 0.92f, 0.45f, 1.0f });
     hud_panel_ptr->addChild(std::move(gold_text));
@@ -554,6 +579,13 @@ void GameScene::createUnitsPortraitUI()
         return;
     }
 
+    const auto& layout = ui_config_->getUnitPanelLayout();
+    const auto window_size = context_.getGameState().getWindowLogicalSize();
+
+    if (registry_.ctx().contains<game::data::SelectionState>()) {
+        registry_.ctx().get<game::data::SelectionState>().hovered_portrait_name_id_ = 0;
+    }
+
     if (!unit_panel_) {
         auto unit_panel = std::make_unique<engine::ui::UIPanel>(context_);
         unit_panel->setBackgroundColor({ 0.0f, 0.0f, 0.0f, 0.0f });
@@ -562,6 +594,8 @@ void GameScene::createUnitsPortraitUI()
             ui_manager->addElement(std::move(unit_panel));
         }
     }
+    const float previous_scroll_x = unit_panel_scroll_x_;
+    unit_panel_content_width_ = 0.0f;
     game::ui::rebuildUnitsPortraitUI(
         *unit_panel_,
         context_,
@@ -570,12 +604,36 @@ void GameScene::createUnitsPortraitUI()
         *entity_factory_,
         game_stats_,
         hidden_unit_portrait_ids_,
+        unit_panel_scroll_x_,
+        &unit_panel_content_width_,
         [this](const game::data::UnitData& unit, int cost) {
             selected_unit_id_ = unit.name_id_;
             selected_unit_name_ = unit.name_;
             ENGINE_LOG_INFO("选择角色肖像: {} ({})", unit.name_, unit.class_name_);
             context_.getDispatcher().enqueue(game::defs::PrepUnitEvent{ unit.name_id_, unit.class_id_, cost, unit.level_, unit.rarity_ });
         });
+
+    unit_panel_max_scroll_x_ = std::max(0.0f, unit_panel_content_width_ - (window_size.x - static_cast<float>(layout.padding_) * 2.0f));
+    unit_panel_scroll_x_ = std::clamp(unit_panel_scroll_x_, 0.0f, unit_panel_max_scroll_x_);
+    if (unit_panel_scroll_x_ != previous_scroll_x) {
+        unit_panel_content_width_ = 0.0f;
+        game::ui::rebuildUnitsPortraitUI(
+            *unit_panel_,
+            context_,
+            *session_data_,
+            *ui_config_,
+            *entity_factory_,
+            game_stats_,
+            hidden_unit_portrait_ids_,
+            unit_panel_scroll_x_,
+            &unit_panel_content_width_,
+            [this](const game::data::UnitData& unit, int cost) {
+                selected_unit_id_ = unit.name_id_;
+                selected_unit_name_ = unit.name_;
+                ENGINE_LOG_INFO("选择角色肖像: {} ({})", unit.name_, unit.class_name_);
+                context_.getDispatcher().enqueue(game::defs::PrepUnitEvent{ unit.name_id_, unit.class_id_, cost, unit.level_, unit.rarity_ });
+            });
+    }
 }
 
 void GameScene::updateHealthBars()
@@ -587,24 +645,21 @@ void GameScene::updateHealthBars()
     std::vector<entt::id_type> alive_entities;
     alive_entities.reserve(registry_.storage<entt::entity>().size());
 
-    auto view = registry_.view<game::component::StatsComponent, engine::component::TransformComponent>();
-    for (auto entity : view) {
+    registry_.view<game::component::StatsComponent, engine::component::TransformComponent>().each([&](auto entity, const auto& stats, const auto& transform) {
         const auto entity_id = static_cast<entt::id_type>(entity);
         alive_entities.push_back(entity_id);
 
-        const auto& stats = view.get<game::component::StatsComponent>(entity);
-        const auto& transform = view.get<engine::component::TransformComponent>(entity);
-
-        auto& widget = health_bar_widgets_[entity_id];
-        if (!widget.container_) {
-            auto container = std::make_unique<engine::ui::UIPanel>(context_);
+        auto [it, inserted] = health_bar_widgets_.try_emplace(entity_id);
+        auto& widget = it->second;
+        if (inserted || !widget.container_) {
+            auto container = std::unique_ptr<engine::ui::UIPanel>(new engine::ui::UIPanel(context_));
             container->setId(entity_id);
             container->setSize({ 48.0f, 6.0f });
             container->setBackgroundColor({ 0.08f, 0.08f, 0.08f, 0.95f });
             container->setBorderColor({ 0.0f, 0.0f, 0.0f, 0.85f });
             container->setBorderWidth(1.0f);
 
-            auto fill = std::make_unique<engine::ui::UIPanel>(context_);
+            auto fill = std::unique_ptr<engine::ui::UIPanel>(new engine::ui::UIPanel(context_));
             fill->setPosition({ 1.0f, 1.0f });
             fill->setSize({ 46.0f, 4.0f });
             fill->setBackgroundColor({ 0.2f, 0.8f, 0.2f, 1.0f });
@@ -631,7 +686,7 @@ void GameScene::updateHealthBars()
         }
 
         widget.container_->setVisible(true);
-    }
+    });
 
     std::vector<entt::id_type> to_remove;
     for (const auto& [entity_id, widget] : health_bar_widgets_) {
@@ -650,6 +705,22 @@ void GameScene::updateHealthBars()
 
 void GameScene::updateUi(float delta_time) {
     updateHealthBars();
+
+    const auto wheel_delta = context_.getInputManager().getMouseWheelDelta();
+    if (unit_panel_ && wheel_delta.y != 0.0f && unit_panel_->containsPoint(context_.getInputManager().getLogicalMousePosition())) {
+        const float next_scroll = std::clamp(unit_panel_scroll_x_ - wheel_delta.y * 28.0f, 0.0f, unit_panel_max_scroll_x_);
+        if (next_scroll != unit_panel_scroll_x_) {
+            unit_panel_scroll_x_ = next_scroll;
+            createUnitsPortraitUI();
+        }
+    }
+
+    const int current_unit_panel_cost = static_cast<int>(game_stats_.cost_);
+    if (unit_panel_ && current_unit_panel_cost != last_unit_panel_cost_) {
+        last_unit_panel_cost_ = current_unit_panel_cost;
+        createUnitsPortraitUI();
+    }
+
     refreshHudText();
 
     if (wave_banner_text_ && wave_banner_text_->isVisible()) {
@@ -720,6 +791,8 @@ void GameScene::onEnemyArriveHome(const game::defs::EnemyArriveHomeEvent&) {
     ENGINE_LOG_WARN("敌人到达基地，基地生命值: {}", base_hp_);
 
     if (base_hp_ <= 0) {
+        context_.getResourceManager().stopMusic();
+        context_.getResourceManager().playMusic(entt::hashed_string("lose").value());
         context_.getGameState().setState(engine::core::GameStateType::GameOver);
         ENGINE_LOG_WARN("基地生命耗尽，游戏结束");
     }
@@ -765,63 +838,80 @@ void GameScene::onRemoveUIPortrait(const game::defs::RemoveUIPortraitEvent& even
     }
 }
 
+void GameScene::onUIPortraitHoverEnter(const game::defs::UIPortraitHoverEnterEvent& event) {
+    if (registry_.ctx().contains<game::data::SelectionState>()) {
+        registry_.ctx().get<game::data::SelectionState>().hovered_portrait_name_id_ = event.name_id_;
+    }
+}
+
+void GameScene::onUIPortraitHoverLeave(const game::defs::UIPortraitHoverLeaveEvent&) {
+    if (registry_.ctx().contains<game::data::SelectionState>()) {
+        registry_.ctx().get<game::data::SelectionState>().hovered_portrait_name_id_ = 0;
+    }
+}
+
+void GameScene::onRestartRequested(const game::defs::RestartEvent&) {
+    ENGINE_LOG_INFO("收到重开请求，重新构建 GameScene");
+    requestReplaceScene(std::unique_ptr<engine::scene::Scene>(new game::scene::GameScene(context_, selected_level_index_)));
+}
+
+void GameScene::onBackToTitleRequested(const game::defs::BackToTitleEvent&) {
+    ENGINE_LOG_INFO("收到回标题请求");
+    requestReplaceScene(std::unique_ptr<engine::scene::Scene>(new game::scene::TitleScene(context_)));
+}
+
+void GameScene::onSaveRequested(const game::defs::SaveEvent&) {
+    if (!session_data_) {
+        return;
+    }
+
+    nlohmann::json json_data;
+    json_data["level"] = static_cast<int>(selected_level_index_) + 1;
+    json_data["point"] = static_cast<int>(game_stats_.cost_);
+    json_data["level_clear"] = false;
+
+    auto& unit_json = json_data["unit"];
+    for (const auto& [name_id, unit] : session_data_->getUnitMap()) {
+        unit_json[unit.name_]["class"] = unit.class_name_;
+        unit_json[unit.name_]["level"] = unit.level_;
+        unit_json[unit.name_]["rarity"] = unit.rarity_;
+    }
+
+    const std::string save_path = "assets/save/SLOT_1.json";
+    std::ofstream out_file(save_path);
+    if (!out_file.is_open()) {
+        ENGINE_LOG_ERROR("保存失败，无法写入文件: {}", save_path);
+        return;
+    }
+
+    out_file << json_data.dump(4);
+    ENGINE_LOG_INFO("保存完成: {}", save_path);
+}
+
+void GameScene::onLevelClearRequested(const game::defs::LevelClearEvent&) {
+    ENGINE_LOG_INFO("收到通关请求，推入通关覆盖层: level={}", selected_level_index_ + 1);
+    requestPushScene(std::unique_ptr<engine::scene::Scene>(new game::scene::LevelClearScene(context_, selected_level_index_)));
+}
+
 // --- 测试函数 ---
 void GameScene::createTestEnemy() {
     startNextWave();
 }
 
 bool GameScene::onCreateTestPlayerMelee() {
-    if (!context_.getGameState().isPlaying()) {
-        return false;
-    }
-
-    auto position = context_.getInputManager().getLogicalMousePosition();
-    if (pause_button_ && pause_button_->containsPoint(position)) {
-        return false;
-    }
-    const auto cost = getUnitCost("warrior"_hs);
-    if (!trySpendGold(cost)) {
-        return false;
-    }
-    auto entity = entity_factory_->createPlayerUnit("warrior"_hs, position);
-    
-    // 测试用：设为受伤并增加受伤标签
-    if (auto* stats = registry_.try_get<game::component::StatsComponent>(entity)) {
-        stats->hp_ = stats->max_hp_ / 2.0f;
-        registry_.emplace<game::defs::InjuredTag>(entity);
-    }
-
-    ENGINE_LOG_INFO("创建战士: 位置: {}, {}", position.x, position.y);
-    return true;
+    return tryCreateTestPlayerUnit("warrior"_hs, "战士", true);
 }
 
 bool GameScene::onCreateTestPlayerRanged() {
-    if (!context_.getGameState().isPlaying()) {
-        return false;
-    }
-
-    auto position = context_.getInputManager().getLogicalMousePosition();
-    if (pause_button_ && pause_button_->containsPoint(position)) {
-        return false;
-    }
-    const auto cost = getUnitCost("archer"_hs);
-    if (!trySpendGold(cost)) {
-        return false;
-    }
-    auto entity = entity_factory_->createPlayerUnit("archer"_hs, position);
-
-    // 测试用：设为受伤并增加受伤标签
-    if (auto* stats = registry_.try_get<game::component::StatsComponent>(entity)) {
-        stats->hp_ = stats->max_hp_ / 2.0f;
-        registry_.emplace<game::defs::InjuredTag>(entity);
-    }
-
-    ENGINE_LOG_INFO("创建弓箭手: 位置: {}, {}", position.x, position.y);
-    return true;
+    return tryCreateTestPlayerUnit("archer"_hs, "弓箭手", true);
 }
 
 bool GameScene::onCreateTestPlayerHealer() {
-    if (!context_.getGameState().isPlaying()) {
+    return tryCreateTestPlayerUnit("witch"_hs, "治疗者", false);
+}
+
+bool GameScene::tryCreateTestPlayerUnit(entt::id_type class_id, const char* log_name, bool injured) {
+    if (!context_.getGameState().isPlaying() || !entity_factory_) {
         return false;
     }
 
@@ -829,12 +919,27 @@ bool GameScene::onCreateTestPlayerHealer() {
     if (pause_button_ && pause_button_->containsPoint(position)) {
         return false;
     }
-    const auto cost = getUnitCost("witch"_hs);
+
+    const auto cost = getUnitCost(class_id);
     if (!trySpendGold(cost)) {
         return false;
     }
-    entity_factory_->createPlayerUnit("witch"_hs, position);
-    ENGINE_LOG_INFO("创建治疗者: 位置: {}, {}", position.x, position.y);
+
+    auto entity = entity_factory_->createPlayerUnit(class_id, position);
+    if (entity == entt::null) {
+        game_stats_.cost_ += static_cast<float>(cost);
+        ENGINE_LOG_ERROR("创建{}失败，已回退金币: {}", log_name, cost);
+        return false;
+    }
+
+    if (injured) {
+        if (auto* stats = registry_.try_get<game::component::StatsComponent>(entity)) {
+            stats->hp_ = stats->max_hp_ / 2.0f;
+            registry_.emplace<game::defs::InjuredTag>(entity);
+        }
+    }
+
+    ENGINE_LOG_INFO("创建{}: 位置: {}, {}", log_name, position.x, position.y);
     return true;
 }
 
@@ -867,7 +972,8 @@ bool GameScene::onUpgradeClosestPlayer() {
         return false;
     }
 
-    context_.getDispatcher().enqueue(game::defs::UpgradeHeroEvent{ target });
+    const auto& player = registry_.get<game::component::PlayerComponent>(target);
+    context_.getDispatcher().enqueue(game::defs::UpgradeUnitEvent{ target, player.cost_ });
     return true;
 }
 
@@ -896,11 +1002,9 @@ bool GameScene::onSellClosestPlayer() {
     }
 
     const auto& player = registry_.get<game::component::PlayerComponent>(target);
-    const int refund = std::max(1, player.cost_ / 2);
-    game_stats_.cost_ += static_cast<float>(refund);
-    context_.getDispatcher().enqueue(game::defs::RemovePlayerUnitEvent{ target });
+    context_.getDispatcher().enqueue(game::defs::RetreatEvent{ target, player.cost_ });
 
-    ENGINE_LOG_INFO("出售单位成功，返还金币: {}, 当前金币: {}", refund, static_cast<int>(game_stats_.cost_));
+    ENGINE_LOG_INFO("撤退单位已触发: entity={}, cost={}", entt::to_integral(target), player.cost_);
     return true;
 }
 
@@ -952,42 +1056,17 @@ void GameScene::startNextWave() {
     wave_break_timer_ = 0.0f;
     wave_running_ = true;
 
-    if (!level_waves_.empty()) {
-        const auto wave_index = (current_wave_ - 1) % level_waves_.size();
-        const auto& wave = level_waves_[wave_index];
-        pending_wave_enemies_ = wave.enemy_queue_;
-        wave_spawn_interval_ = std::max(0.1f, wave.spawn_interval_);
-        wave_break_duration_ = std::max(0.1f, wave.next_wave_interval_);
-    } else {
-        wave_spawn_interval_ = game::defs::WAVE_SPAWN_INTERVAL;
-        wave_break_duration_ = game::defs::WAVE_BREAK_DURATION;
-
-        auto add_enemies = [this](entt::id_type class_id, int count) {
-            for (int i = 0; i < count; ++i) {
-                pending_wave_enemies_.push_back(class_id);
-            }
-        };
-
-        switch ((current_wave_ - 1) % 4) {
-        case 0:
-            add_enemies("wolf"_hs, game::defs::WAVE_BASE_COUNT);
-            break;
-        case 1:
-            add_enemies("wolf"_hs, game::defs::WAVE_BASE_COUNT - 1);
-            add_enemies("slime"_hs, 2);
-            break;
-        case 2:
-            add_enemies("goblin"_hs, game::defs::WAVE_BASE_COUNT - 2);
-            add_enemies("slime"_hs, 2);
-            add_enemies("dark_witch"_hs, 1);
-            break;
-        default:
-            add_enemies("wolf"_hs, 2);
-            add_enemies("goblin"_hs, 2);
-            add_enemies("dark_witch"_hs, 1);
-            break;
-        }
+    if (level_waves_.empty()) {
+        wave_running_ = false;
+        ENGINE_LOG_ERROR("关卡 {} 未配置 waves，无法开始第 {} 波", current_level_name_, current_wave_);
+        return;
     }
+
+    const auto wave_index = (current_wave_ - 1) % level_waves_.size();
+    const auto& wave = level_waves_[wave_index];
+    pending_wave_enemies_ = wave.enemy_queue_;
+    wave_spawn_interval_ = std::max(0.1f, wave.spawn_interval_);
+    wave_break_duration_ = std::max(0.1f, wave.next_wave_interval_);
 
     game_stats_.enemy_count_ += static_cast<int>(pending_wave_enemies_.size());
 
@@ -1002,6 +1081,10 @@ void GameScene::startNextWave() {
 
 void GameScene::updateWaveFlow(float delta_time) {
     if (start_points_.empty() || !entity_factory_) {
+        return;
+    }
+
+    if (level_waves_.empty()) {
         return;
     }
 

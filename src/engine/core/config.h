@@ -23,7 +23,7 @@ namespace engine::core {
     public:
         // --- 默认配置值 --- (为了方便拓展，全部设置为公有)
         // 窗口设置
-        std::string window_title_ = "SunnyLand";    ///< 窗口标题
+        std::string window_title_ = "MonsterWar";    ///< 窗口标题
         int window_width_ = 1280;                   ///< 窗口宽度
         int window_height_ = 720;                   ///< 窗口高度
         float window_scale_ = 1.0f;                  ///< 窗口缩放比例

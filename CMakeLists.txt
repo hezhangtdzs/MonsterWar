@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10.0)
-project(SunnyLand VERSION 0.1.0 LANGUAGES C CXX)
+project(MonsterWar VERSION 0.1.0 LANGUAGES C CXX)
 
 # 可选第三方库根目录（例如 C:/Library）
 set(MONSTERWAR_3RDPARTY_ROOT "C:/Library" CACHE PATH "Third-party library root directory")
